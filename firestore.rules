@@ -1,0 +1,126 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Hardened global security primitives
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        (request.auth.token.email == 'shakib2006k@gmail.com') ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Entity validation functions
+    function isValidUser(data) {
+      return data.keys().hasAll(['id', 'name', 'email', 'role']) &&
+        data.id is string && isValidId(data.id) &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+        data.email is string && data.email.size() <= 150 &&
+        data.role in ['student', 'teacher', 'admin'];
+    }
+
+    function isValidPost(data) {
+      return data.keys().hasAll(['id', 'authorId', 'authorName', 'text', 'subjectId', 'classId']) &&
+        data.id is string && isValidId(data.id) &&
+        data.authorId is string && data.authorId == request.auth.uid &&
+        data.authorName is string && data.authorName.size() <= 100 &&
+        data.text is string && data.text.size() <= 3000 &&
+        data.subjectId is string && data.subjectId.size() <= 50 &&
+        data.classId is string && data.classId.size() <= 50;
+    }
+
+    function isValidComment(data) {
+      return data.keys().hasAll(['id', 'postId', 'authorId', 'authorName', 'content']) &&
+        data.id is string && isValidId(data.id) &&
+        data.postId is string && isValidId(data.postId) &&
+        data.authorId is string && data.authorId == request.auth.uid &&
+        data.authorName is string && data.authorName.size() <= 100 &&
+        data.content is string && data.content.size() > 0 && data.content.size() <= 1000;
+    }
+
+    function isValidReport(data) {
+      return data.keys().hasAll(['id', 'targetType', 'targetId', 'reporterId', 'reason', 'status']) &&
+        data.id is string && isValidId(data.id) &&
+        data.targetType in ['post', 'comment', 'user'] &&
+        data.targetId is string && data.targetId.size() <= 128 &&
+        data.reporterId is string && data.reporterId == request.auth.uid &&
+        data.reason is string && data.reason.size() <= 100 &&
+        data.status in ['pending', 'resolved', 'dismissed'];
+    }
+
+    // Admins collection
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isOwner(userId) && isValidUser(incoming()) && (incoming().role != 'admin' || isAdmin());
+      allow update: if isSignedIn() && (
+        (isOwner(userId) && isValidUser(incoming()) && incoming().role == existing().role) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Posts collection
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidId(postId) && isValidPost(incoming());
+      allow update: if isSignedIn() && isValidId(postId) && (
+        (isOwner(existing().authorId) && isValidPost(incoming()) && incoming().authorId == existing().authorId) ||
+        (incoming().diff(existing()).affectedKeys().hasOnly(['likes', 'likedByUserIds', 'savedByUserIds', 'commentCount'])) ||
+        isAdmin()
+      );
+      allow delete: if isSignedIn() && isValidId(postId) && (isOwner(existing().authorId) || isAdmin());
+    }
+
+    // Comments collection
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidId(commentId) && isValidComment(incoming());
+      allow update: if isSignedIn() && isValidId(commentId) && (
+        (isOwner(existing().authorId) && isValidComment(incoming()) && incoming().authorId == existing().authorId) ||
+        (incoming().diff(existing()).affectedKeys().hasOnly(['likes', 'likedByUserIds', 'replies'])) ||
+        isAdmin()
+      );
+      allow delete: if isSignedIn() && isValidId(commentId) && (isOwner(existing().authorId) || isAdmin());
+    }
+
+    // Reports collection
+    match /reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn() && isValidId(reportId) && isValidReport(incoming());
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+  }
+}

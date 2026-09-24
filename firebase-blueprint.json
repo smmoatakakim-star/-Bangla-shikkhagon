@@ -1,0 +1,120 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Student, Teacher, or Admin user profile",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "username": { "type": "string", "maxLength": 50 },
+        "email": { "type": "string", "maxLength": 150 },
+        "role": { "type": "string", "enum": ["student", "teacher", "admin"] },
+        "classGrade": { "type": "string", "maxLength": 20 },
+        "bio": { "type": "string", "maxLength": 500 },
+        "avatar": { "type": "string", "maxLength": 1000 },
+        "schoolName": { "type": "string", "maxLength": 150 },
+        "totalPosts": { "type": "number" },
+        "totalLikesReceived": { "type": "number" },
+        "savedPostIds": { "type": "array" },
+        "savedLessonIds": { "type": "array" },
+        "savedQuizIds": { "type": "array" },
+        "completedChapterIds": { "type": "array" },
+        "bookmarkedQuestionIds": { "type": "array" },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "isBanned": { "type": "boolean" }
+      },
+      "required": ["id", "name", "email", "role"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "Educational community post shared by students or teachers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "authorId": { "type": "string", "maxLength": 128 },
+        "authorName": { "type": "string", "maxLength": 100 },
+        "authorUsername": { "type": "string", "maxLength": 50 },
+        "authorAvatar": { "type": "string", "maxLength": 1000 },
+        "authorRole": { "type": "string", "enum": ["student", "teacher", "admin"] },
+        "authorClass": { "type": "string", "maxLength": 50 },
+        "text": { "type": "string", "maxLength": 3000 },
+        "imageUrl": { "type": "string", "maxLength": 2000 },
+        "videoUrl": { "type": "string", "maxLength": 2000 },
+        "videoThumbnail": { "type": "string", "maxLength": 2000 },
+        "mediaType": { "type": "string", "enum": ["image", "video", "text"] },
+        "subjectId": { "type": "string", "maxLength": 50 },
+        "subjectName": { "type": "string", "maxLength": 50 },
+        "classId": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "likes": { "type": "number" },
+        "likedByUserIds": { "type": "array" },
+        "commentCount": { "type": "number" },
+        "savedByUserIds": { "type": "array" },
+        "isPinned": { "type": "boolean" }
+      },
+      "required": ["id", "authorId", "authorName", "text", "subjectId", "classId"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "Comment and discussion under a community post",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "postId": { "type": "string", "maxLength": 128 },
+        "authorId": { "type": "string", "maxLength": 128 },
+        "authorName": { "type": "string", "maxLength": 100 },
+        "authorUsername": { "type": "string", "maxLength": 50 },
+        "authorAvatar": { "type": "string", "maxLength": 1000 },
+        "authorClass": { "type": "string", "maxLength": 50 },
+        "authorRole": { "type": "string", "enum": ["student", "teacher", "admin"] },
+        "content": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "likes": { "type": "number" },
+        "likedByUserIds": { "type": "array" },
+        "replies": { "type": "array" }
+      },
+      "required": ["id", "postId", "authorId", "authorName", "content"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "Content moderation report",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "targetType": { "type": "string", "enum": ["post", "comment", "user"] },
+        "targetId": { "type": "string", "maxLength": 128 },
+        "targetPreview": { "type": "string", "maxLength": 500 },
+        "reporterId": { "type": "string", "maxLength": 128 },
+        "reporterName": { "type": "string", "maxLength": 100 },
+        "reason": { "type": "string", "maxLength": 100 },
+        "details": { "type": "string", "maxLength": 1000 },
+        "status": { "type": "string", "enum": ["pending", "resolved", "dismissed"] },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "targetType", "targetId", "reporterId", "reason", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents"
+    },
+    "/posts/{postId}": {
+      "schema": "Post",
+      "description": "Community posts and educational questions"
+    },
+    "/comments/{commentId}": {
+      "schema": "Comment",
+      "description": "Comments on community posts"
+    },
+    "/reports/{reportId}": {
+      "schema": "Report",
+      "description": "User moderation reports for inappropriate content"
+    },
+    "/admins/{adminId}": {
+      "schema": "User",
+      "description": "Designated administrator records"
+    }
+  }
+}
