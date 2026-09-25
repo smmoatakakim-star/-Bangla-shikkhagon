@@ -16,6 +16,8 @@ import {
   Layers,
   Sparkles,
   HelpCircle,
+  Code,
+  Download,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ClassId, SubjectId, UserRole } from '../types';
@@ -601,10 +603,11 @@ export const AdminDashboardPage: React.FC = () => {
 
       {/* Tab 6: Website Settings */}
       {activeTab === 'settings' && (
-        <form
-          onSubmit={handleSaveSettings}
-          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6 max-w-2xl"
-        >
+        <div className="space-y-6 max-w-2xl">
+          <form
+            onSubmit={handleSaveSettings}
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6"
+          >
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
             <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
               সাধারণ সেটিংস ও ব্যানার
@@ -662,6 +665,34 @@ export const AdminDashboardPage: React.FC = () => {
             </button>
           </div>
         </form>
+
+        {/* Developer & Source Code Management (Admin Only) */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm space-y-4 max-w-2xl">
+          <div className="flex items-center gap-2.5 border-b border-slate-100 dark:border-slate-800 pb-3">
+            <Code className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                ডেভেলপার ও সোর্স কোড ম্যানেজমেন্ট (Developer Tools)
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                গিটহাব সংযোগ ও সম্পূর্ণ সোর্স কোড ডাউনলোড টুলস (সাধারণ ব্যবহারকারীদের জন্য লুকানো)
+              </p>
+            </div>
+          </div>
+
+          <div className="pt-1">
+            <a
+              id="admin-download-source-zip-btn"
+              href="/api/download-project"
+              download="nctb-education-project.zip"
+              className="inline-flex items-center justify-center gap-2 p-3.5 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs transition shadow-sm"
+            >
+              <Download className="w-4 h-4 shrink-0" />
+              <span>সম্পূর্ণ ZIP সোর্স কোড ডাউনলোড</span>
+            </a>
+          </div>
+        </div>
+      </div>
       )}
 
       {/* Modal: Add New Lesson */}

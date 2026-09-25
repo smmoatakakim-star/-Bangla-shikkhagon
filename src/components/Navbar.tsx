@@ -24,7 +24,6 @@ import {
   Languages,
   ShieldCheck,
   GraduationCap,
-  Github,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { PageType } from '../types';
@@ -42,7 +41,6 @@ export const Navbar: React.FC = () => {
     markNotificationsAsRead,
     switchUser,
     logout,
-    openGitHubChecker,
   } = useApp();
 
   const [showNotifications, setShowNotifications] = useState(false);
@@ -131,18 +129,6 @@ export const Navbar: React.FC = () => {
 
           {/* Right Action Icons & Controls */}
           <div className="flex items-center gap-2">
-            {/* Check GitHub Connection Button */}
-            <button
-              id="header-check-github-btn"
-              onClick={openGitHubChecker}
-              title="Check GitHub Connection"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-100 border border-slate-700/60 shadow-xs transition cursor-pointer"
-            >
-              <Github className="w-4 h-4 shrink-0 text-emerald-400" />
-              <span className="hidden md:inline">Check GitHub Connection</span>
-              <span className="md:hidden text-[11px]">GitHub</span>
-            </button>
-
             {/* Search Button */}
             <button
               id="header-search-btn"
@@ -483,19 +469,6 @@ export const Navbar: React.FC = () => {
           id="mobile-drawer-menu"
           className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 pt-2 pb-4 space-y-1 shadow-lg"
         >
-          {/* Check GitHub Connection Mobile Button */}
-          <button
-            id="mobile-drawer-check-github-btn"
-            onClick={() => {
-              openGitHubChecker();
-              setShowMobileMenu(false);
-            }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold text-white bg-slate-900 dark:bg-slate-800 hover:bg-black dark:hover:bg-slate-700 shadow-sm mb-1"
-          >
-            <Github className="w-5 h-5 text-emerald-400" />
-            <span>Check GitHub Connection</span>
-          </button>
-
           {navLinks.map((link) => {
             const Icon = link.icon;
             return (

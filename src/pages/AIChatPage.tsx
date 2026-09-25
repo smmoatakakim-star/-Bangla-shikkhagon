@@ -8,6 +8,7 @@ import {
   Copy,
   Check,
   RotateCcw,
+  AlertCircle,
   HelpCircle,
   FileText,
   Calculator,
@@ -204,8 +205,17 @@ export const AIChatPage: React.FC = () => {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error('Failed to get response');
-      const data = await res.json();
+      const isJson = res.headers.get('content-type')?.includes('application/json');
+      let data: any = null;
+      if (isJson) {
+        data = await res.json();
+      } else {
+        throw new Error('সার্ভার থেকে সঠিক ফরম্যাটে উত্তর আসেনি। অনুগ্রহ করে পুনরায় চেষ্টা করুন।');
+      }
+
+      if (!res.ok) {
+        throw new Error(data?.error || data?.message || `সার্ভার অনুরোধ ব্যর্থ হয়েছে (HTTP ${res.status})।`);
+      }
 
       const aiReply = data.reply || 'দুঃখিত, কোনো উত্তর পাওয়া যায়নি। দয়া করে আবার চেষ্টা করুন।';
 
@@ -223,13 +233,22 @@ export const AIChatPage: React.FC = () => {
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error('AI chat error:', err);
+      let errorText = 'দুঃখিত, অনুরোধটি সম্পন্ন করতে সমস্যা হয়েছে। দয়া করে পুনরায় চেষ্টা করুন।';
+      if (err?.message?.includes('Failed to fetch') || err?.name === 'TypeError') {
+        errorText = 'ইন্টারনেট বা সার্ভারের সাথে সংযোগ বিচ্ছিন্ন হয়েছে। অনুগ্রহ করে আপনার নেটওয়ার্ক কানেকশন চেক করে পুনরায় চেষ্টা করুন।';
+      } else if (err?.message) {
+        errorText = err.message;
+      }
+
       const errorMessage: AIChatMessage = {
         id: `err-${Date.now()}`,
         sender: 'assistant',
-        text: 'ইন্টারনেট বা সার্ভার সংযোগে সমস্যা হয়েছে। দয়া করে পুনরায় প্রশ্ন করুন।',
+        text: errorText,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        isError: true,
+        retryPrompt: textToSend,
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
@@ -609,6 +628,8 @@ export const AIChatPage: React.FC = () => {
                       className={`p-4 rounded-2xl text-sm leading-relaxed ${
                         isUser
                           ? 'bg-emerald-600 text-white rounded-br-xs shadow-sm font-normal'
+                          : msg.isError
+                          ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 border border-rose-200 dark:border-rose-800 rounded-bl-xs shadow-xs'
                           : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700/80 rounded-bl-xs shadow-xs'
                       }`}
                     >
@@ -623,21 +644,56 @@ export const AIChatPage: React.FC = () => {
                         </div>
                       )}
 
-                      {/* Context badge if present */}
-                      {msg.contextInfo?.chapterTitle && !isUser && (
-                        <div className="mb-2 text-[11px] text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md inline-block font-medium">
-                          📖 {msg.contextInfo.chapterTitle}
-                        </div>
-                      )}
+                      {/* Error state presentation with Retry button */}
+                      {msg.isError ? (
+                        <div className="space-y-3">
+                          <div className="flex items-start gap-2.5">
+                            <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+                            <div className="space-y-1">
+                              <p className="font-semibold text-rose-900 dark:text-rose-200 text-sm">
+                                {msg.text}
+                              </p>
+                              {msg.errorDetail && (
+                                <p className="text-xs text-rose-700/80 dark:text-rose-300/80">
+                                  {msg.errorDetail}
+                                </p>
+                              )}
+                            </div>
+                          </div>
 
-                      {/* Message Content formatted with Markdown-like rendering */}
-                      <div className="whitespace-pre-wrap font-sans space-y-2 select-text">
-                        {msg.text}
-                      </div>
+                          {msg.retryPrompt && (
+                            <div className="pt-1">
+                              <button
+                                type="button"
+                                id={`retry-btn-${msg.id}`}
+                                onClick={() => handleSendMessage(msg.retryPrompt)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition cursor-pointer"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>পুনরায় চেষ্টা করুন (Retry)</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <>
+                          {/* Context badge if present */}
+                          {msg.contextInfo?.chapterTitle && !isUser && (
+                            <div className="mb-2 text-[11px] text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md inline-block font-medium">
+                              📖 {msg.contextInfo.chapterTitle}
+                            </div>
+                          )}
+
+                          {/* Message Content formatted with Markdown-like rendering */}
+                          <div className="whitespace-pre-wrap font-sans space-y-2 select-text">
+                            {msg.text}
+                          </div>
+                        </>
+                      )}
                     </div>
 
-                    {/* Action Toolbar for AI message */}
-                    {!isUser && (
+                    {/* Action Toolbar for AI message (only if not an error) */}
+                    {!isUser && !msg.isError && (
                       <div className="flex items-center gap-3 px-1 text-xs text-slate-500 dark:text-slate-400">
                         <button
                           id={`copy-btn-${msg.id}`}

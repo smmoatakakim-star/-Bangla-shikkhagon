@@ -28,7 +28,6 @@ import {
   Users,
   Share2,
   X,
-  Github,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ClassId, SubjectId } from '../types';
@@ -52,7 +51,6 @@ export const HomePage: React.FC = () => {
     isItemSaved,
     toggleSaveItem,
     setSearchQuery,
-    openGitHubChecker,
   } = useApp();
 
   const [searchInput, setSearchInput] = useState('');
@@ -263,40 +261,6 @@ export const HomePage: React.FC = () => {
             </button>
           </div>
         </div>
-      </section>
-
-      {/* GitHub Connection Status Card - Clearly Visible Button */}
-      <section
-        id="home-github-connection-section"
-        className="rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-950 text-white p-3.5 sm:p-4 shadow-sm border border-slate-700/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0 shadow-inner">
-            <Github className="w-5 h-5 text-emerald-400" />
-          </div>
-          <div className="space-y-0.5">
-            <div className="flex items-center gap-2">
-              <h3 className="text-xs sm:text-sm font-bold text-white">
-                GitHub Connection Status
-              </h3>
-              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                Official API
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-300 leading-snug">
-              অ্যাপের সাথে অফিসিয়াল GitHub OAuth সংযোগ, অ্যাকাউন্ট তথ্য ও রিপোজিটরি স্থিতি যাচাই করুন।
-            </p>
-          </div>
-        </div>
-
-        <button
-          id="home-check-github-connection-btn"
-          onClick={openGitHubChecker}
-          className="w-full sm:w-auto px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer shrink-0"
-        >
-          <Github className="w-4 h-4" />
-          <span>Check GitHub Connection</span>
-        </button>
       </section>
 
       {/* Front Feature Cards: SSC Hub, HSC Hub, Formula Bank, Eid Special - Compact 2-column mobile */}

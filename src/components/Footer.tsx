@@ -1,10 +1,10 @@
 import React from 'react';
-import { BookOpen, Heart, Mail, Phone, Shield, FileText, HelpCircle, Sparkles, Github, Download } from 'lucide-react';
+import { BookOpen, Heart, Mail, Phone, Shield, FileText, HelpCircle, Sparkles, Download } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { PageType } from '../types';
 
 export const Footer: React.FC = () => {
-  const { navigate, settings, resetAllData, openGitHubChecker } = useApp();
+  const { navigate, settings, resetAllData } = useApp();
 
   const handleNav = (page: PageType, params = {}) => {
     navigate(page, params);
@@ -151,16 +151,6 @@ export const Footer: React.FC = () => {
               <li>
                 <button onClick={() => handleNav('terms')} className="hover:text-emerald-600 transition">
                   ব্যবহারের শর্তাবলী
-                </button>
-              </li>
-              <li>
-                <button
-                  id="footer-check-github-btn"
-                  onClick={openGitHubChecker}
-                  className="hover:text-emerald-600 font-semibold text-slate-700 dark:text-slate-200 transition flex items-center gap-1.5"
-                >
-                  <Github className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>Check GitHub Connection</span>
                 </button>
               </li>
               <li>

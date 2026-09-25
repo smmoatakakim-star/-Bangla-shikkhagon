@@ -76,7 +76,8 @@ const upload = multer({
 // Lazy-initialized Gemini AI client
 let aiClient: GoogleGenAI | null = null;
 function getGeminiAI(): GoogleGenAI | null {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey =
+    process.env.GEMINI_API_KEY || process.env.API_KEY || process.env.GOOGLE_API_KEY;
   if (!apiKey || apiKey === 'MY_GEMINI_API_KEY') {
     return null;
   }
@@ -87,13 +88,58 @@ function getGeminiAI(): GoogleGenAI | null {
 }
 
 // Timeout helper to ensure resilient AI responses without hanging
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 7000): Promise<T> {
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 30000): Promise<T> {
   return Promise.race([
     promise,
     new Promise<T>((_, reject) =>
       setTimeout(() => reject(new Error(`Timeout after ${timeoutMs}ms`)), timeoutMs)
     ),
   ]);
+}
+
+// Multi-model resilient caller for Gemini API
+async function callGeminiGenerate(params: {
+  contents: any;
+  systemInstruction?: string;
+  config?: any;
+  hasImage?: boolean;
+}): Promise<{ text: string; model: string }> {
+  const ai = getGeminiAI();
+  if (!ai) {
+    throw new Error('NO_API_KEY');
+  }
+
+  // Model cascade:
+  // For images/vision: 'gemini-3.5-flash', 'gemini-3.8-flash'
+  // For text: 'gemini-3.1-flash-lite' is fast & highly available, then fallback to 'gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest'
+  const modelCandidates = params.hasImage
+    ? ['gemini-3.5-flash', 'gemini-3.8-flash']
+    : ['gemini-3.1-flash-lite', 'gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest'];
+
+  let lastError: any = null;
+  for (const model of modelCandidates) {
+    try {
+      const response = await withTimeout(
+        ai.models.generateContent({
+          model,
+          contents: params.contents,
+          config: {
+            ...(params.systemInstruction ? { systemInstruction: params.systemInstruction } : {}),
+            ...(params.config || {}),
+          },
+        }),
+        30000
+      );
+      if (response && response.text) {
+        return { text: response.text, model };
+      }
+    } catch (err: any) {
+      console.warn(`[AI Engine] Model ${model} encountered issue, trying fallback:`, err?.status || err?.message || err);
+      lastError = err;
+    }
+  }
+
+  throw lastError || new Error('ALL_MODELS_FAILED');
 }
 
 // Comprehensive offline fallback generator for educational curriculum
@@ -771,6 +817,17 @@ app.delete('/api/upload/:filename', (req, res) => {
   }
 });
 
+// AI Status endpoint
+app.get('/api/ai/status', (req, res) => {
+  const ai = getGeminiAI();
+  return res.json({
+    active: !!ai,
+    hasApiKey: !!ai,
+    defaultModel: 'gemini-3.1-flash-lite',
+    fallbackModels: ['gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest'],
+  });
+});
+
 // AI Chat endpoint
 app.post('/api/ai/chat', async (req, res) => {
   try {
@@ -782,18 +839,6 @@ app.post('/api/ai/chat', async (req, res) => {
     const lastMessage = messages[messages.length - 1];
     const userPrompt = lastMessage?.text || '';
 
-    const ai = getGeminiAI();
-
-    // If Gemini API is not available or key is not set, use educational fallback
-    if (!ai) {
-      const fallbackReply = generateEducationalFallback(userPrompt, context);
-      return res.json({
-        reply: fallbackReply,
-        model: 'educational-fallback',
-        isOfflineFallback: true,
-      });
-    }
-
     // Build system instruction
     const classText = context?.classId ? `শ্রেণি: ${context.classId.replace('class-', '')}ম শ্রেণি, ` : '';
     const subjectText = context?.subjectId ? `বিষয়: ${context.subjectId}, ` : '';
@@ -801,8 +846,8 @@ app.post('/api/ai/chat', async (req, res) => {
     const modeText = context?.mode || 'general';
 
     const systemInstruction = `
-আপনি হলেন "বাংলা শিক্ষা ঘর"-এর একজন অত্যন্ত সহানুভূতিশীল, অভিজ্ঞ ও বন্ধুভাবাপন্ন স্কুল শিক্ষক ও AI শিক্ষা সহায়ক।
-আপনার লক্ষ্য হলো ৬ষ্ঠ থেকে ১০ম শ্রেণির বাংলাদেশি শিক্ষার্থীদের পড়াশোনায় সর্বোত্তম সহায়তা করা।
+আপনি হলেন "বাংলা শিক্ষাগর"-এর একজন অত্যন্ত সহানুভূতিশীল, অভিজ্ঞ ও বন্ধুভাবাপন্ন স্কুল শিক্ষক ও AI শিক্ষা সহায়ক।
+আপনার লক্ষ্য হলো ৬ষ্ঠ থেকে ১২ম শ্রেণির বাংলাদেশি শিক্ষার্থীদের জাতীয় শিক্ষাক্রম (NCTB) অনুযায়ী পড়াশোনায় সর্বোত্তম সহায়তা করা।
 
 বর্তমান প্রেক্ষাপট:
 ${classText}${subjectText}${chapterText}পদ্ধতি: ${modeText}
@@ -816,11 +861,10 @@ ${classText}${subjectText}${chapterText}পদ্ধতি: ${modeText}
 ৬. শেষে শিক্ষার্থীকে উৎসাহিত করুন এবং প্রাসঙ্গিক পরবর্তী প্রশ্ন করার সুযোগ রাখুন।
 `.trim();
 
-    // Call Gemini API using gemini-3.8-flash with timeout
-    const promptText = userPrompt.trim() || 'অনুগ্রহ করে এই ছবিটিতে থাকা প্রশ্ন বা সমীকরণটি বিশ্লেষণ করে ধাপে ধাপে সমাধান বুঝিয়ে দিন।';
+    const hasImage = Boolean(lastMessage?.imageBase64 && lastMessage?.imageMimeType);
     const contentParts: any[] = [];
 
-    if (lastMessage?.imageBase64 && lastMessage?.imageMimeType) {
+    if (hasImage) {
       const cleanBase64 = lastMessage.imageBase64.replace(/^data:[^;]+;base64,/, '');
       contentParts.push({
         inlineData: {
@@ -830,33 +874,35 @@ ${classText}${subjectText}${chapterText}পদ্ধতি: ${modeText}
       });
     }
 
+    const promptText = userPrompt.trim() || 'অনুগ্রহ করে এই ছবিটিতে থাকা প্রশ্ন বা সমীকরণটি বিশ্লেষণ করে ধাপে ধাপে সমাধান বুঝিয়ে দিন।';
     contentParts.push({
       text: `${systemInstruction}\n\nশিক্ষার্থীর প্রশ্ন:\n${promptText}`,
     });
 
-    const response = await withTimeout(
-      ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: [
-          {
-            role: 'user',
-            parts: contentParts,
-          },
-        ],
-      })
-    );
+    const aiResult = await callGeminiGenerate({
+      contents: [
+        {
+          role: 'user',
+          parts: contentParts,
+        },
+      ],
+      hasImage,
+    });
 
-    const reply = response.text || generateEducationalFallback(userPrompt, context);
-    return res.json({ reply, model: 'gemini-3.8-flash' });
+    return res.json({
+      reply: aiResult.text,
+      model: aiResult.model,
+      success: true,
+    });
   } catch (error: any) {
-    console.error('Gemini API Error:', error);
-    // On any API error (quota limit, network error), gracefully serve high-value educational content
+    console.warn('Gemini API Error in /api/ai/chat, serving curriculum fallback:', error?.message || error);
     const lastMessage = req.body?.messages?.[req.body?.messages?.length - 1]?.text || '';
     const fallbackReply = generateEducationalFallback(lastMessage, req.body?.context);
     return res.json({
       reply: fallbackReply,
-      model: 'educational-fallback-recovered',
-      warning: 'Live AI quota exceeded; high-accuracy curriculum fallback served.',
+      model: 'educational-curriculum-engine',
+      success: true,
+      recovered: true,
     });
   }
 });
@@ -865,10 +911,8 @@ ${classText}${subjectText}${chapterText}পদ্ধতি: ${modeText}
 app.post('/api/ai/generate-notes', async (req, res) => {
   try {
     const { classId, subjectId, chapterTitle, specificTopic } = req.body;
-    const ai = getGeminiAI();
-
     const topic = specificTopic || chapterTitle || 'অধ্যায়ের সারসংক্ষেপ';
-    const prompt = `অনুগ্রহ করে ${classId || 'স্কুল'} এর ${subjectId || 'বিষয়'} বিষয়ের "${topic}" অধ্যায়টির জন্য একটি সম্পূর্ণ ও উচ্চমানসম্পন্ন পরীক্ষার রিভিশন নোট তৈরি করুন।
+    const prompt = `অনুগ্রহ করে বাংলাদেশ জাতীয় শিক্ষাক্রম (NCTB) অনুযায়ী ${classId || 'স্কুল'} এর ${subjectId || 'বিষয়'} বিষয়ের "${topic}" অধ্যায়টির জন্য একটি সম্পূর্ণ ও উচ্চমানসম্পন্ন পরীক্ষার রিভিশন নোট তৈরি করুন।
 এতে অন্তর্ভুক্ত থাকবে:
 ১. বিষয়টির সারসংক্ষেপ ও সহজ ভাষায় ব্যাখ্যা
 ২. ৫টি অতি গুরুত্বপূর্ণ সংজ্ঞা ও পরিভাষা
@@ -876,26 +920,17 @@ app.post('/api/ai/generate-notes', async (req, res) => {
 ৪. পরীক্ষায় সচরাচর আসা ৩টি অনুধাবনমূলক প্রশ্ন ও উত্তর
 ৫. পরীক্ষার বিশেষ টিপস ও সাধারণ ভুলের সতর্কতা।`;
 
-    if (!ai) {
-      return res.json({
-        notes: generateEducationalFallback(topic, { classId, subjectId, chapterTitle, mode: 'notes' }),
-        source: 'curriculum-engine',
-      });
-    }
+    const aiResult = await callGeminiGenerate({
+      contents: prompt,
+    });
 
-    const response = await withTimeout(
-      ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: prompt,
-      })
-    );
-
-    return res.json({ notes: response.text, source: 'gemini-3.8-flash' });
-  } catch (err) {
-    console.error('Error generating notes:', err);
+    return res.json({ notes: aiResult.text, source: aiResult.model, success: true });
+  } catch (err: any) {
+    console.warn('Error generating notes, using fallback:', err?.message || err);
     return res.json({
       notes: generateEducationalFallback(req.body?.chapterTitle || 'সারসংক্ষেপ', req.body),
-      source: 'fallback',
+      source: 'curriculum-engine',
+      success: true,
     });
   }
 });
@@ -904,28 +939,6 @@ app.post('/api/ai/generate-notes', async (req, res) => {
 app.post('/api/ai/generate-mcqs', async (req, res) => {
   try {
     const { chapterTitle, subjectId, count = 5, difficulty = 'medium' } = req.body;
-    const ai = getGeminiAI();
-
-    if (!ai) {
-      const fallbackList = [
-        {
-          question: `${chapterTitle || 'বিষয়'}-এর ক্ষেত্রে নিচের কোনটি সবচেয়ে সঠিক বিবৃতি?`,
-          options: [
-            'বোর্ড পাঠ্যক্রমের সংজ্ঞাসমূহ বাস্তব উদাহরণের সাথে সম্পর্কিত',
-            'এটি কেবল পরীক্ষার আগের দিন মুখস্থ করার বিষয়',
-            'এর কোনো প্রায়োগিক দিক নেই',
-            'সবগুলো ভুল',
-          ],
-          correctAnswerIndex: 0,
-          explanation: 'এনসিটিবি পাঠ্যক্রমে বাস্তব জীবনের সাথে বৈজ্ঞানিক ও গাণিতিক চিন্তন দক্ষতার মেলবন্ধনকে গুরুত্ব দেওয়া হয়েছে।',
-        },
-      ];
-      return res.json({
-        questions: fallbackList,
-        mcqs: fallbackList,
-      });
-    }
-
     const prompt = `You are a curriculum question expert for Bangladesh NCTB schools.
 Generate ${count} high-quality Multiple Choice Questions (MCQ) for subject "${subjectId}" on chapter/topic "${chapterTitle}" at difficulty level "${difficulty}".
 Respond ONLY with a valid JSON array of objects without Markdown code fences, conforming strictly to this format:
@@ -938,36 +951,36 @@ Respond ONLY with a valid JSON array of objects without Markdown code fences, co
   }
 ]`;
 
-    const response = await withTimeout(
-      ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: prompt,
-        config: {
-          responseMimeType: 'application/json',
-        },
-      })
-    );
+    const aiResult = await callGeminiGenerate({
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+      },
+    });
 
-    const parsed = JSON.parse(response.text || '[]');
-    return res.json({ questions: parsed, mcqs: parsed });
-  } catch (err) {
-    console.error('Error generating MCQs:', err);
+    const cleanText = aiResult.text.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(cleanText || '[]');
+    return res.json({ questions: parsed, mcqs: parsed, success: true, source: aiResult.model });
+  } catch (err: any) {
+    console.warn('Error generating MCQs, using fallback:', err?.message || err);
     const fallbackList = [
       {
         question: `${req.body?.chapterTitle || 'অধ্যায়'} সংক্রান্ত গুরুত্বপূর্ণ ধারণা কোনটি?`,
         options: [
           'অধ্যায়ের প্রতিটি সূত্র ও সংজ্ঞার বাস্তব প্রয়োগ জানা আবশ্যক',
-          'কোনো ব্যাখ্যা ছাড়া শুধু উত্তর মনে রাখা',
+          'কোনো ব্যাখ্যা ছাড়া শুধু উত্তর মুখস্থ করা',
           'পরীক্ষায় কোনো ব্যাখ্যা না পড়া',
           'কোনোটিই নয়',
         ],
         correctAnswerIndex: 0,
-        explanation: 'প্রতিটি ধারণার মূল কারণ ও সূত্র বুঝতে পারলে যেকোনো সৃজনশীল বা বহুনির্বাচনী সমাধান করা যায়।',
+        explanation: 'এনসিটিবি পাঠ্যক্রমে বাস্তব জীবনের সাথে বৈজ্ঞানিক ও গাণিতিক চিন্তন দক্ষতার মেলবন্ধনকে গুরুত্ব দেওয়া হয়েছে।',
       },
     ];
     return res.json({
       questions: fallbackList,
       mcqs: fallbackList,
+      success: true,
+      source: 'curriculum-engine',
     });
   }
 });
@@ -1080,13 +1093,6 @@ app.post('/api/ai/quick-answer', async (req, res) => {
       return res.json({ ...QUICK_ANSWER_CACHE.get(cacheKey), cached: true });
     }
 
-    const ai = getGeminiAI();
-    if (!ai) {
-      const fallback = generateQuickAnswerFallback(question, { classId, subjectId, chapterTitle, length, simplify });
-      QUICK_ANSWER_CACHE.set(cacheKey, fallback);
-      return res.json(fallback);
-    }
-
     const prompt = `You are the lead NCTB Master Teacher for Bangladeshi students (Class 6-10).
 A student asked this question: "${question}".
 Context: Class: ${classId || 'Secondary'}, Subject: ${subjectId || 'General'}, Chapter: ${chapterTitle || 'Curriculum'}.
@@ -1103,18 +1109,16 @@ Respond STRICTLY with a valid JSON object matching this schema (NO code blocks, 
   "simplerAnalogy": "আরও সহজ ভাষায় বা রূপকের মাধ্যমে ১ বাক্যে সারসংক্ষেপ"
 }`;
 
-    const response = await withTimeout(
-      ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: prompt,
-        config: {
-          responseMimeType: 'application/json',
-        },
-      })
-    );
+    const aiResult = await callGeminiGenerate({
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+      },
+    });
 
     try {
-      const parsed = JSON.parse(response.text || '{}');
+      const cleanText = aiResult.text.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleanText || '{}');
       const result = {
         question: parsed.question || question,
         directAnswer: parsed.directAnswer || 'সরাসরি উত্তর প্রস্তুত রয়েছে।',
@@ -1123,7 +1127,7 @@ Respond STRICTLY with a valid JSON object matching this schema (NO code blocks, 
         keyPoints: parsed.keyPoints || [],
         formulaOrRule: parsed.formulaOrRule || '',
         simplerAnalogy: parsed.simplerAnalogy || '',
-        source: 'gemini-3.8-flash',
+        source: aiResult.model,
       };
       QUICK_ANSWER_CACHE.set(cacheKey, result);
       return res.json(result);
@@ -1131,8 +1135,8 @@ Respond STRICTLY with a valid JSON object matching this schema (NO code blocks, 
       const fallback = generateQuickAnswerFallback(question, { classId, subjectId, chapterTitle, length, simplify });
       return res.json(fallback);
     }
-  } catch (err) {
-    console.error('Quick Answer API Error:', err);
+  } catch (err: any) {
+    console.warn('Quick Answer API Error, using fallback:', err?.message || err);
     const fallback = generateQuickAnswerFallback(req.body?.question || '', req.body);
     return res.json(fallback);
   }

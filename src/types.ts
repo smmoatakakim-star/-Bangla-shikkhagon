@@ -481,6 +481,9 @@ export interface AIChatMessage {
   };
   suggestedFollowups?: string[];
   isBookmarked?: boolean;
+  isError?: boolean;
+  retryPrompt?: string;
+  errorDetail?: string;
 }
 
 export interface AIGeneratedQuizItem {
