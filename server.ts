@@ -699,9 +699,12 @@ app.post('/api/github/push-all-files', async (req, res) => {
     }
 
     // 3. Stage and commit all files in workspace
-    await execAsync('git config user.name "NCTB Education" || true');
+    if (!fs.existsSync('.git')) {
+      await execAsync('git init && git branch -M main');
+    }
+    await execAsync('git config user.name "Bangla Shikkhagor" || true');
     await execAsync('git config user.email "shakib2006k@gmail.com" || true');
-    await execAsync('git add .');
+    await execAsync('git add -A');
     try {
       await execAsync(`git commit -m "${commitMessage.replace(/"/g, '\\"')}"`);
     } catch {

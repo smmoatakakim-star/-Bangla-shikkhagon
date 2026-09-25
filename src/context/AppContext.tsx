@@ -179,6 +179,11 @@ interface AppContextType {
   markNotificationsAsRead: () => void;
   unreadNotificationsCount: number;
 
+  // GitHub Repository Manager (Admin & Developer)
+  isGitHubModalOpen: boolean;
+  setIsGitHubModalOpen: (open: boolean) => void;
+  openGitHubChecker: () => void;
+
   // Helper getters
   getClassById: (id: ClassId) => ClassInfo | undefined;
   getSubjectById: (id: SubjectId) => SubjectInfo | undefined;
@@ -293,6 +298,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
   const [activeCustomQuiz, setActiveCustomQuiz] = useState<Quiz | null>(null);
   const [isFirebaseLoading, setIsFirebaseLoading] = useState<boolean>(false);
+  const [isGitHubModalOpen, setIsGitHubModalOpen] = useState<boolean>(false);
+
+  const openGitHubChecker = () => setIsGitHubModalOpen(true);
 
   // Sync Firebase Auth & listen to onAuthStateChanged
   useEffect(() => {
@@ -1266,6 +1274,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         markNotificationsAsRead,
         unreadNotificationsCount,
+
+        isGitHubModalOpen,
+        setIsGitHubModalOpen,
+        openGitHubChecker,
 
         getClassById,
         getSubjectById,

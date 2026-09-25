@@ -9,6 +9,7 @@ import { Navbar } from './components/Navbar';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { AnnouncementBanner } from './components/AnnouncementBanner';
 import { Footer } from './components/Footer';
+import { GitHubConnectionModal } from './components/GitHubConnectionModal';
 
 // Pages
 import { HomePage } from './pages/HomePage';
@@ -40,7 +41,7 @@ import { HSCDashboardPage } from './pages/HSCDashboardPage';
 import { FormulaBankPage } from './pages/FormulaBankPage';
 
 const AppContent: React.FC = () => {
-  const { currentPage } = useApp();
+  const { currentPage, isGitHubModalOpen, setIsGitHubModalOpen } = useApp();
 
   // Scroll to top on page transition
   useEffect(() => {
@@ -129,6 +130,12 @@ const AppContent: React.FC = () => {
 
       {/* Footer */}
       <Footer />
+
+      {/* GitHub Repository Manager Modal (Developer / Admin) */}
+      <GitHubConnectionModal
+        isOpen={isGitHubModalOpen}
+        onClose={() => setIsGitHubModalOpen(false)}
+      />
 
       {/* Mobile-only Bottom Navigation Bar */}
       <MobileBottomNav />

@@ -18,6 +18,8 @@ import {
   HelpCircle,
   Code,
   Download,
+  Github,
+  UploadCloud,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ClassId, SubjectId, UserRole } from '../types';
@@ -44,6 +46,7 @@ export const AdminDashboardPage: React.FC = () => {
     addQuiz,
     navigate,
     quickSwitchUser,
+    openGitHubChecker,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<
@@ -680,12 +683,22 @@ export const AdminDashboardPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="pt-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <button
+              type="button"
+              id="admin-github-push-btn"
+              onClick={openGitHubChecker}
+              className="inline-flex items-center justify-center gap-2 p-3.5 px-5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs transition shadow-sm cursor-pointer"
+            >
+              <Github className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>GitHub-এ সমস্ত ফাইল পুশ করুন</span>
+            </button>
+
             <a
               id="admin-download-source-zip-btn"
               href="/api/download-project"
               download="nctb-education-project.zip"
-              className="inline-flex items-center justify-center gap-2 p-3.5 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs transition shadow-sm"
+              className="inline-flex items-center justify-center gap-2 p-3.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs transition shadow-sm"
             >
               <Download className="w-4 h-4 shrink-0" />
               <span>সম্পূর্ণ ZIP সোর্স কোড ডাউনলোড</span>
