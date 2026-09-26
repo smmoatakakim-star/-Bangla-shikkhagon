@@ -50,7 +50,12 @@ export const AINotesTab: React.FC = () => {
 
       if (!res.ok) throw new Error('Failed to generate notes');
       const data = await res.json();
-      setGeneratedNotes(data.notes);
+      const notesContent = data?.notes || data?.reply || data?.content;
+      if (notesContent && typeof notesContent === 'string' && notesContent.trim()) {
+        setGeneratedNotes(notesContent.trim());
+      } else {
+        throw new Error('No notes content');
+      }
     } catch (err) {
       console.error(err);
       // Fallback

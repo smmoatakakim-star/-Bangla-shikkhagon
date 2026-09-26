@@ -205,19 +205,34 @@ export const AIChatPage: React.FC = () => {
         body: JSON.stringify(payload),
       });
 
-      const isJson = res.headers.get('content-type')?.includes('application/json');
-      let data: any = null;
-      if (isJson) {
-        data = await res.json();
-      } else {
-        throw new Error('সার্ভার থেকে সঠিক ফরম্যাটে উত্তর আসেনি। অনুগ্রহ করে পুনরায় চেষ্টা করুন।');
+      let aiReply = '';
+      try {
+        const textResponse = await res.text();
+        try {
+          const data = JSON.parse(textResponse);
+          aiReply =
+            data.reply ||
+            data.text ||
+            data.content ||
+            data.answer ||
+            data.message ||
+            '';
+        } catch {
+          // If response was direct text rather than JSON
+          if (textResponse && textResponse.trim() && !textResponse.includes('<!DOCTYPE')) {
+            aiReply = textResponse.trim();
+          }
+        }
+      } catch (readErr) {
+        console.warn('Response parsing warning:', readErr);
       }
 
-      if (!res.ok) {
-        throw new Error(data?.error || data?.message || `সার্ভার অনুরোধ ব্যর্থ হয়েছে (HTTP ${res.status})।`);
+      if (!aiReply) {
+        if (!res.ok) {
+          throw new Error(`সার্ভারে সাময়িক সমস্যা হচ্ছে (স্ট্যাটাস: ${res.status})। অনুগ্রহ করে একটু পর আবার চেষ্টা করুন।`);
+        }
+        aiReply = 'দুঃখিত, কোনো উত্তর প্রস্তুত করা যায়নি। দয়া করে পুনরায় চেষ্টা করুন।';
       }
-
-      const aiReply = data.reply || 'দুঃখিত, কোনো উত্তর পাওয়া যায়নি। দয়া করে আবার চেষ্টা করুন।';
 
       const assistantMessage: AIChatMessage = {
         id: `assistant-${Date.now()}`,

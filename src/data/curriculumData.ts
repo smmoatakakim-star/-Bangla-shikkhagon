@@ -8,6 +8,8 @@ import { NCTB_COMPREHENSIVE_CHAPTERS } from './nctbCompleteCurriculum';
 import { ALL_NCTB_COMPLETE_CHAPTERS } from './curriculum';
 import { SSC_SUBJECTS } from './curriculum/sscSubjects';
 import { HSC_SUBJECTS } from './curriculum/hscSubjects';
+import { SSC_CHAPTERS } from './curriculum/sscChapters';
+import { HSC_CHAPTERS } from './curriculum/hscChapters';
 
 export const ALL_CLASSES: ClassInfo[] = [
   {
@@ -1092,5 +1094,7 @@ export const ALL_CHAPTERS: ChapterInfo[] = [
   ...INITIAL_CHAPTERS,
   ...NCTB_COMPREHENSIVE_CHAPTERS.filter(c => !INITIAL_IDS.has(c.id)),
   ...ALL_NCTB_COMPLETE_CHAPTERS.filter(c => !INITIAL_IDS.has(c.id) && !COMPREHENSIVE_IDS.has(c.id)),
+  ...SSC_CHAPTERS,
+  ...HSC_CHAPTERS,
 ];
 

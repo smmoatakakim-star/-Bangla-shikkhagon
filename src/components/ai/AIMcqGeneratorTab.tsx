@@ -62,7 +62,12 @@ export const AIMcqGeneratorTab: React.FC = () => {
 
       if (!res.ok) throw new Error('Failed to generate MCQs');
       const data = await res.json();
-      setMcqs(data.mcqs || data.questions || []);
+      const parsedMcqs = data.mcqs || data.questions;
+      if (Array.isArray(parsedMcqs) && parsedMcqs.length > 0) {
+        setMcqs(parsedMcqs);
+      } else {
+        throw new Error('No MCQs returned');
+      }
     } catch (err) {
       console.error(err);
       // Fallback MCQs

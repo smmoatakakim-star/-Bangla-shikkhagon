@@ -24,6 +24,7 @@ interface QuickAnswerResult {
   realLifeExample: string;
   keyPoints: string[];
   formulaOrRule?: string;
+  simplerAnalogy?: string;
   cached?: boolean;
 }
 
@@ -72,7 +73,15 @@ export const AIQuickAnswerTab: React.FC = () => {
 
       if (!res.ok) throw new Error('Network error');
       const data = await res.json();
-      setResult(data);
+      setResult({
+        question: data?.question || query,
+        directAnswer: data?.directAnswer || data?.answer || data?.reply || 'উত্তর প্রস্তুত করা হয়েছে।',
+        simpleExplanation: data?.simpleExplanation || data?.explanation || '',
+        realLifeExample: data?.realLifeExample || data?.example || '',
+        keyPoints: Array.isArray(data?.keyPoints) && data.keyPoints.length > 0 ? data.keyPoints : ['বিষয়টির মূল পয়েন্ট মনে রাখুন', 'নিয়মিত অনুশীলন করুন'],
+        formulaOrRule: data?.formulaOrRule || '',
+        simplerAnalogy: data?.simplerAnalogy || '',
+      });
     } catch (err) {
       console.error(err);
       // Fallback

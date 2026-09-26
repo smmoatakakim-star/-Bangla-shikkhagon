@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   BookOpen,
   GraduationCap,
@@ -10,6 +10,9 @@ import {
   MessageSquare,
   Bookmark,
   CheckCircle,
+  CheckCircle2,
+  XCircle,
+  RotateCw,
   HelpCircle,
   Clock,
   Compass,
@@ -30,8 +33,15 @@ import {
   X,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { ClassId, SubjectId } from '../types';
+import { ClassId, SubjectId, QuizQuestion } from '../types';
 import { allNctbMcqList } from '../data/mcq';
+import {
+  getAllPlatformMcqs,
+  getTotalPlatformMcqCount,
+  getPlatformMcqsByClass,
+  getAllSscMcqs,
+  getAllHscMcqs,
+} from '../data/academyMcqData';
 
 const toBengaliDigits = (num: number): string => {
   const bn = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
@@ -51,10 +61,90 @@ export const HomePage: React.FC = () => {
     isItemSaved,
     toggleSaveItem,
     setSearchQuery,
+    toggleBookmarkQuestion,
+    isQuestionBookmarked,
+    recordWrongQuestion,
   } = useApp();
 
   const [searchInput, setSearchInput] = useState('');
   const [showEidModal, setShowEidModal] = useState(false);
+
+  // Live MCQ Showcase State
+  const [mcqCategory, setMcqCategory] = useState<'featured' | 'middle' | 'secondary' | 'ssc' | 'hsc'>('featured');
+  const [mcqPageOffset, setMcqPageOffset] = useState(0);
+  const [selectedHomeAnswers, setSelectedHomeAnswers] = useState<Record<string, number>>({});
+
+  // Dynamic calculations across all NCTB, SSC & HSC MCQs
+  const totalPlatformMcqs = useMemo(() => getTotalPlatformMcqCount(), []);
+
+  const categoryQuestions = useMemo(() => {
+    switch (mcqCategory) {
+      case 'middle':
+        return allNctbMcqList.filter((q) => ['class-6', 'class-7', 'class-8'].includes(q.classId));
+      case 'secondary':
+        return allNctbMcqList.filter((q) => ['class-9', 'class-10'].includes(q.classId));
+      case 'ssc':
+        return getAllSscMcqs();
+      case 'hsc':
+        return getAllHscMcqs();
+      case 'featured':
+      default:
+        return getAllPlatformMcqs();
+    }
+  }, [mcqCategory]);
+
+  const displayedHomeQuestions = useMemo(() => {
+    if (!categoryQuestions || categoryQuestions.length === 0) return [];
+    const count = 3;
+    const startIndex = (mcqPageOffset * count) % categoryQuestions.length;
+    let slice = categoryQuestions.slice(startIndex, startIndex + count);
+    if (slice.length < count) {
+      slice = [...slice, ...categoryQuestions.slice(0, count - slice.length)];
+    }
+    return slice;
+  }, [categoryQuestions, mcqPageOffset]);
+
+  const handleSelectHomeOption = (q: QuizQuestion, optIndex: number) => {
+    if (selectedHomeAnswers[q.id] !== undefined) return;
+    setSelectedHomeAnswers((prev) => ({ ...prev, [q.id]: optIndex }));
+    if (optIndex !== q.correctAnswerIndex) {
+      recordWrongQuestion(q);
+    }
+  };
+
+  const handleNextHomeQuestions = () => {
+    setMcqPageOffset((prev) => prev + 1);
+  };
+
+  const getSubjectName = (subId?: string) => {
+    if (!subId) return 'সাধারণ বিষয়';
+    const sub = subjects.find((s) => s.id === subId);
+    if (sub) return sub.name;
+    const map: Record<string, string> = {
+      bangla: 'বাংলা',
+      english: 'ইংরেজি',
+      math: 'সাধারণ গণিত',
+      science: 'বিজ্ঞান',
+      bgs: 'বাংলাদেশ ও বিশ্বপরিচয়',
+      ict: 'তথ্য ও যোগাযোগ প্রযুক্তি',
+      physics: 'পদার্থবিজ্ঞান',
+      chemistry: 'রসায়ন',
+      biology: 'জীববিজ্ঞান',
+      higher_math: 'উচ্চতর গণিত',
+      accounting: 'হিসাববিজ্ঞান',
+      finance: 'ফিন্যান্স ও ব্যাংকিং',
+      economics: 'অর্থনীতি',
+      civics: 'পৌরনীতি ও সুশাসন',
+    };
+    return map[subId.toLowerCase()] || subId;
+  };
+
+  const getClassName = (clsId?: string) => {
+    if (!clsId) return '';
+    if (clsId === 'ssc') return 'এসএসসি (SSC)';
+    if (clsId === 'hsc') return 'এইচএসসি (HSC)';
+    return clsId.replace('class-', '') + 'ম শ্রেণি';
+  };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -177,7 +267,7 @@ export const HomePage: React.FC = () => {
           </h1>
 
           <p className="text-xs sm:text-sm text-emerald-100/90 max-w-xl mx-auto leading-relaxed">
-            NCTB কারিকুলাম ও বোর্ড সিলেবাস অনুযায়ী অধ্যায়ভিত্তিক পাঠ, {toBengaliDigits(allNctbMcqList.length)}+ প্রশ্নব্যাংক, স্বয়ংক্রিয় মডেল টেস্ট ও লাইভ কুইজ।
+            NCTB কারিকুলাম ও বোর্ড সিলেবাস অনুযায়ী অধ্যায়ভিত্তিক পাঠ, {toBengaliDigits(totalPlatformMcqs)}+ প্রশ্নব্যাংক, স্বয়ংক্রিয় মডেল টেস্ট ও লাইভ কুইজ।
           </p>
 
           {/* Compact Search box */}
@@ -208,7 +298,7 @@ export const HomePage: React.FC = () => {
               <div className="text-[10px] text-emerald-200">শ্রেণি (৬ষ্ঠ-১২শ)</div>
             </div>
             <div>
-              <div className="text-lg sm:text-xl font-bold">{toBengaliDigits(allNctbMcqList.length)}+</div>
+              <div className="text-lg sm:text-xl font-bold">{toBengaliDigits(totalPlatformMcqs)}+</div>
               <div className="text-[10px] text-emerald-200">প্রশ্ন ও ব্যাখ্যা</div>
             </div>
             <div>
@@ -384,6 +474,227 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
+      {/* 🎯 লাইভ MCQ প্রশ্নব্যাংক ও তাৎক্ষণিক প্র্যাকটিস শোকেস */}
+      <section id="home-live-mcq-showcase" className="space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-2.5">
+          <div>
+            <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold text-xs uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span>লাইভ MCQ প্রশ্নব্যাংক ও অনুশীলন</span>
+            </div>
+            <h2 className="text-base sm:text-xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-2 mt-0.5">
+              <span>বাছাইকৃত MCQ প্রশ্ন ও তাৎক্ষণিক যাচাই</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 font-bold border border-emerald-300 dark:border-emerald-800">
+                {toBengaliDigits(totalPlatformMcqs)}+ টি প্রশ্ন
+              </span>
+            </h2>
+            <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+              সরাসরি অপশনে ক্লিক করে উত্তর মেলাও এবং প্রতিটি প্রশ্নের সঠিক ব্যাখ্যা শিখে নাও।
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => navigate('question_bank')}
+              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>সম্পূর্ণ প্রশ্নব্যাংক ({toBengaliDigits(totalPlatformMcqs)}+)</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Category Tabs: [বাছাইকৃত সেরা] [৬ষ্ঠ-৮ম] [৯ম-১০ম] [এসএসসি একাডেমি (১১৫০+)] [এইচএসসি একাডেমি (৬৯৩+)] */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+          {[
+            { id: 'featured', label: 'বাছাইকৃত সেরা', count: totalPlatformMcqs },
+            { id: 'middle', label: '৬ষ্ঠ — ৮ম শ্রেণি', count: 636 },
+            { id: 'secondary', label: '৯ম — ১০ম শ্রেণি', count: 430 },
+            { id: 'ssc', label: 'এসএসসি (SSC)', count: 1150 },
+            { id: 'hsc', label: 'এইচএসসি (HSC)', count: 693 },
+          ].map((tab) => {
+            const isActive = mcqCategory === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setMcqCategory(tab.id as any);
+                  setMcqPageOffset(0);
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 flex items-center gap-1.5 cursor-pointer ${
+                  isActive
+                    ? 'bg-slate-900 dark:bg-emerald-600 text-white shadow-xs'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <span>{tab.label}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                    isActive
+                      ? 'bg-white/20 text-white'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                  }`}
+                >
+                  {toBengaliDigits(tab.count)}+
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 3 Interactive Questions Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {displayedHomeQuestions.map((q, idx) => {
+            const userChoice = selectedHomeAnswers[q.id];
+            const isAnswered = userChoice !== undefined;
+            const isCorrect = userChoice === q.correctAnswerIndex;
+            const isBookmarked = isQuestionBookmarked(q.id);
+            const bengaliLetters = ['ক', 'খ', 'গ', 'ঘ'];
+
+            return (
+              <div
+                key={q.id || `home-q-${idx}`}
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-2xs hover:shadow-xs transition flex flex-col justify-between"
+              >
+                <div className="space-y-2.5">
+                  {/* Badge header */}
+                  <div className="flex items-center justify-between gap-1 text-[10px]">
+                    <div className="flex flex-wrap items-center gap-1">
+                      <span className="px-2 py-0.5 rounded-md font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/40">
+                        {getSubjectName(q.subjectId)}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/40">
+                        {getClassName(q.classId)}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => toggleBookmarkQuestion(q)}
+                      title={isBookmarked ? 'বুকমার্ক সরান' : 'বুকমার্ক করুন'}
+                      className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-emerald-600 transition cursor-pointer"
+                    >
+                      <Bookmark className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-emerald-600 text-emerald-600' : ''}`} />
+                    </button>
+                  </div>
+
+                  {/* Question Title */}
+                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 leading-snug">
+                    <span className="text-emerald-600 dark:text-emerald-400 mr-1.5">
+                      {toBengaliDigits(idx + 1)}.
+                    </span>
+                    {q.question}
+                  </h3>
+
+                  {/* Options */}
+                  <div className="space-y-1.5 pt-1">
+                    {q.options.map((opt, optIdx) => {
+                      const isSelected = userChoice === optIdx;
+                      const isRightOption = optIdx === q.correctAnswerIndex;
+
+                      let btnStyle = 'bg-slate-50 dark:bg-slate-800/70 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 hover:border-emerald-400 hover:bg-emerald-50/40';
+
+                      if (isAnswered) {
+                        if (isSelected && isCorrect) {
+                          btnStyle = 'bg-emerald-50 dark:bg-emerald-950/70 border-emerald-500 text-emerald-800 dark:text-emerald-200 font-bold ring-1 ring-emerald-500';
+                        } else if (isSelected && !isCorrect) {
+                          btnStyle = 'bg-rose-50 dark:bg-rose-950/70 border-rose-500 text-rose-800 dark:text-rose-200 font-bold ring-1 ring-rose-500';
+                        } else if (isRightOption) {
+                          btnStyle = 'bg-emerald-50/80 dark:bg-emerald-950/50 border-emerald-500 text-emerald-700 dark:text-emerald-300 font-bold';
+                        } else {
+                          btnStyle = 'opacity-50 border-slate-200 dark:border-slate-800 text-slate-500';
+                        }
+                      }
+
+                      return (
+                        <button
+                          key={optIdx}
+                          disabled={isAnswered}
+                          onClick={() => handleSelectHomeOption(q, optIdx)}
+                          className={`w-full p-2 rounded-xl border text-left text-xs transition flex items-center justify-between gap-2 cursor-pointer disabled:cursor-default ${btnStyle}`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-md bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center text-[10px] font-bold shrink-0 border border-slate-200 dark:border-slate-600">
+                              {bengaliLetters[optIdx]}
+                            </span>
+                            <span className="leading-snug">{opt}</span>
+                          </div>
+
+                          {isAnswered && isRightOption && (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          )}
+                          {isAnswered && isSelected && !isCorrect && (
+                            <XCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Feedback Explanation */}
+                  {isAnswered && (
+                    <div className="mt-2.5 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 text-[11px] space-y-1 animate-in fade-in">
+                      <div className="font-bold flex items-center gap-1.5">
+                        {isCorrect ? (
+                          <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> চমৎকার! সঠিক উত্তর।
+                          </span>
+                        ) : (
+                          <span className="text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                            <XCircle className="w-3.5 h-3.5" /> সঠিক উত্তর: {bengaliLetters[q.correctAnswerIndex]}. {q.options[q.correctAnswerIndex]}
+                          </span>
+                        )}
+                      </div>
+                      {q.explanation && (
+                        <p className="text-slate-600 dark:text-slate-300 leading-snug">
+                          {q.explanation}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-2 mt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[10px] text-slate-500">
+                  <span>উৎস: {q.source || 'NCTB কারিকুলাম'}</span>
+                  <button
+                    onClick={() => navigate('question_bank', { classId: q.classId, subjectId: q.subjectId })}
+                    className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline flex items-center gap-0.5 cursor-pointer"
+                  >
+                    <span>এই বিষয়ের আরও প্রশ্ন</span>
+                    <ArrowRight className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Footer controls for MCQ showcase */}
+        <div className="p-3 rounded-xl bg-gradient-to-r from-emerald-50 via-teal-50 to-indigo-50 dark:from-slate-900 dark:via-emerald-950/20 dark:to-slate-900 border border-emerald-200/60 dark:border-emerald-900/40 flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
+            <Zap className="w-4 h-4 text-amber-500" />
+            <span>প্রতিদিন নতুন নতুন প্রশ্ন চর্চা করে বোর্ড পরীক্ষার জন্য প্রস্তুত হও।</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleNextHomeQuestions}
+              className="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-700 transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
+            >
+              <RotateCw className="w-3.5 h-3.5 text-emerald-600" />
+              <span>অন্য প্রশ্ন দেখুন</span>
+            </button>
+            <button
+              onClick={() => navigate('question_bank', { classId: mcqCategory === 'featured' ? 'class-6' : mcqCategory === 'middle' ? 'class-8' : mcqCategory === 'secondary' ? 'class-10' : mcqCategory })}
+              className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
+            >
+              <span>প্রশ্নব্যাংকে আরও অনুশীলন</span>
+              <ArrowRight className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+      </section>
+
       {/* 2. Class Selection Section - Compact 2-col on mobile */}
       <section id="class-selection-section" className="space-y-2.5">
         <div className="flex items-center justify-between">
@@ -439,7 +750,7 @@ export const HomePage: React.FC = () => {
                       {toBengaliDigits(chapters.filter((c) => c.classId === cls.id).length || cls.totalChapters)} অধ্যায়
                     </span>
                     <span className="px-1 py-0.2 rounded bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 text-[9px]">
-                      {toBengaliDigits(allNctbMcqList.filter((q) => q.classId === cls.id).length)}+ MCQ
+                      {toBengaliDigits(getPlatformMcqsByClass(cls.id).length)}+ MCQ
                     </span>
                   </div>
                 </div>
@@ -482,7 +793,7 @@ export const HomePage: React.FC = () => {
                   <HelpCircle className="w-3.5 h-3.5 text-white" />
                 </div>
                 <span className="text-[9px] font-bold bg-white/25 px-1 py-0.5 rounded">
-                  ১০০০+ প্রশ্ন
+                  {toBengaliDigits(totalPlatformMcqs)}+ প্রশ্ন
                 </span>
               </div>
               <h3 className="text-xs sm:text-sm font-bold">প্রশ্নব্যাংক</h3>

@@ -9,6 +9,7 @@ import {
 } from '../types';
 import { ALL_CHAPTERS, ALL_SUBJECTS, ALL_CLASSES } from './curriculumData';
 import { allNctbMcqList } from './mcq';
+import { getFilteredAcademyMcqs } from './academyMcqData';
 
 // Handcrafted authentic NCTB core questions with deep educational value
 const HANDCRAFTED_CORE_QUESTIONS: Record<string, Omit<QuizQuestion, 'id' | 'chapterId' | 'subjectId' | 'classId'>[]> = {
@@ -274,9 +275,13 @@ export function getChapterQuestionBank(chapterId: string): QuizQuestion[] {
 
   // Base list of questions starting with genuine NCTB database questions
   const nctbList = allNctbMcqList.filter((q) => q.chapterId === chapterId || (q.classId === classId && q.subjectId === subjectId));
+  const academyList = (classId === 'ssc' || classId === 'hsc')
+    ? getFilteredAcademyMcqs(classId, subjectId, chapterId)
+    : [];
   const existingHandcrafted = HANDCRAFTED_CORE_QUESTIONS[chapterId] || [];
   const baseQuestions: QuizQuestion[] = [
     ...nctbList,
+    ...academyList,
     ...existingHandcrafted.map((q, idx) => ({
       ...q,
       id: `q-${chapterId}-core-${idx + 1}`,
@@ -670,8 +675,21 @@ export function getChapterQuestionBank(chapterId: string): QuizQuestion[] {
   for (let idx = 0; idx < needed; idx++) {
     const genFn = genList[idx % genList.length];
     const item = genFn(baseQuestions.length + idx + 1);
+
+    // Balanced option distribution across 0, 1, 2, 3
+    const targetIdx = (idx + baseQuestions.length) % 4;
+    const rotatedOptions = [...item.options];
+    if (rotatedOptions.length === 4) {
+      const origCorrectIdx = item.correctAnswerIndex ?? 0;
+      const correctText = rotatedOptions[origCorrectIdx];
+      rotatedOptions.splice(origCorrectIdx, 1);
+      rotatedOptions.splice(targetIdx, 0, correctText);
+    }
+
     generatedQuestions.push({
       ...item,
+      options: rotatedOptions,
+      correctAnswerIndex: targetIdx,
       id: `q-${chapterId}-gen-${idx + 1}`,
       chapterId,
       subjectId,
@@ -820,6 +838,11 @@ export function getModelTest(classId: ClassId, subjectId?: SubjectId, count: num
   relevantChapters.forEach((ch) => {
     pool.push(...getChapterQuestionBank(ch.id));
   });
+
+  // If pool is still empty (e.g. for SSC or HSC), draw directly from Academy MCQs
+  if (pool.length === 0 && (classId === 'ssc' || classId === 'hsc')) {
+    pool = getFilteredAcademyMcqs(classId, subjectId);
+  }
 
   const shuffled = [...pool].sort(() => Math.random() - 0.5);
   const questions = shuffled.slice(0, Math.min(count, shuffled.length));

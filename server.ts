@@ -150,85 +150,167 @@ function generateEducationalFallback(
     subjectId?: string;
     chapterTitle?: string;
     mode?: string;
+    previousQuery?: string;
   }
 ): string {
-  const q = userQuery.toLowerCase();
+  const q = (userQuery || '').toLowerCase().trim();
+  const prevQ = (context?.previousQuery || '').toLowerCase().trim();
+  const combined = `${prevQ} ${q}`.trim();
   const className = context?.classId ? context.classId.replace('class-', '') + 'ম শ্রেণি' : 'স্কুল পাঠ্যক্রম';
-  const subjectName = context?.subjectId || 'সাধারণ বিষয়';
   const chapter = context?.chapterTitle || '';
 
-  // Specific educational responses in Bengali
-  if (q.includes('সালোকসংশ্লেষণ') || q.includes('photosynthesis')) {
+  // 1. Photosynthesis (সালোকসংশ্লেষণ) - matching Bengali, Banglish, and typos
+  if (
+    q.includes('সালোক') ||
+    q.includes('সালেক') ||
+    q.includes('শালোক') ||
+    q.includes('salok') ||
+    q.includes('shleshon') ||
+    q.includes('photosynthesis') ||
+    q.includes('পাতায় খাদ্য') ||
+    q.includes('উদ্ভিদের খাদ্য')
+  ) {
     return `### 🌱 সালোকসংশ্লেষণ (Photosynthesis) — সহজ ব্যাখ্যা ও মূল বিষয়\n\n` +
-      `**১. সংজ্ঞা:**\n` +
-      `যে জৈব-রাসায়নিক প্রক্রিয়ায় সবুজ উদ্ভিদ সূর্যালোকের উপস্থিতিতে, ক্লোরোফিলের সহায়তায়, পরিবেশ থেকে গৃহীত কার্বন ডাই-অক্সাইড ($CO_2$) এবং মাটি থেকে শোষিত পানির ($H_2O$) রাসায়নিক বিক্রিয়ায় শর্করা জাতীয় খাদ্য (গ্লুকোজ) প্রস্তুত করে এবং উপজাত হিসেবে অক্সিজেন ($O_2$) নির্গমন করে, তাকে **সালোকসংশ্লেষণ** বলে।\n\n` +
+      `**১. সহজ সংজ্ঞা:**\n` +
+      `যে জৈব-রাসায়নিক প্রক্রিয়ায় সবুজ উদ্ভিদ সূর্যালোকের উপস্থিতিতে, ক্লোরোফিলের সহায়তায়, বাতাস থেকে কার্বন ডাই-অক্সাইড ($CO_2$) এবং মাটি থেকে মূলরোমের সাহায্যে পানি ($H_2O$) গ্রহণ করে শর্করা জাতীয় খাবার (গ্লুকোজ) তৈরি করে এবং পরিবেশে অক্সিজেন ($O_2$) নির্গমন করে, তাকে **সালোকসংশ্লেষণ** বলে।\n\n` +
       `**২. রাসায়নিক সমীকরণ:**\n` +
-      `$$6CO_2 + 12H_2O \\xrightarrow[ক্লোরোফিল]{সূর্যালোক} C_6H_{12}O_6 + 6H_2O + 6O_2$$\n\n` +
+      `$$6CO_2 + 12H_2O \\xrightarrow[\\text{ক্লোরোফিল}]{\\text{সূর্যালোক}} C_6H_{12}O_6 + 6H_2O + 6O_2$$\n\n` +
       `**৩. প্রধান উপাদানসমূহ:**\n` +
-      `- **ক্লোরোফিল:** পাতার মেসোফিল টিস্যুর ক্লোরোপ্লাস্টে অবস্থিত সবুজ রঞ্জক।\n` +
-      `- **সূর্যালোক:** ফোটন কণা ক্লোরোফিলকে সক্রিয় করে রাসায়নিক শক্তিতে রূপান্তরিত করে।\n` +
+      `- **ক্লোরোফিল:** পাতার মেসোফিল টিস্যুর ক্লোরোপ্লাস্টে অবস্থিত সবুজ রঞ্জক কণা।\n` +
+      `- **সূর্যালোক:** ফোটন কণা ক্লোরোফিলকে সক্রিয় করে শক্তি জোগায়।\n` +
       `- **পানি ($H_2O$):** মূলরোম দিয়ে জাইলেম বাহিকার মাধ্যমে পাতায় পৌঁছায়।\n` +
       `- **কার্বন ডাই-অক্সাইড ($CO_2$):** বায়ুমণ্ডল থেকে পত্ররন্ধ্র (Stomata) দিয়ে প্রবেশ করে।\n\n` +
-      `**৪. পরীক্ষার টিপস:**\n` +
-      `পরীক্ষায় প্রায়ই সালোকসংশ্লেষণের আলোক পর্যায় ও অন্ধকার পর্যায়ের পার্থক্য এবং প্রস্বেদনের সাথে এর সম্পর্ক জানতে চাওয়া হয়।`;
+      `**৪. অতি সহজ উপমা:**\n` +
+      `রান্নাঘরে মা যেমন চুলার আগুন, পানি ও উপাদান দিয়ে রান্না করেন—গাছও তেমনি পাতার ভেতর 'সূর্যের আলো'কে চুলার মতো ব্যবহার করে পানি ও বাতাস দিয়ে নিজের খাবার নিজেই তৈরি করে!`;
   }
 
-  if (q.includes('পিথাগোরাস') || q.includes('pythagoras') || q.includes('উপপাদ্য')) {
-    return `### 📐 পিথাগোরাসের উপপাদ্য (Pythagorean Theorem)\n\n` +
-      `**১. মূল সূত্র:**\n` +
-      `একটি সমকোণী ত্রিভুজের অতিভুজের ওপর অঙ্কিত বর্গক্ষেত্রের ক্ষেত্রফল অপর দুই বাহুর ওপর অঙ্কিত বর্গক্ষেত্রদ্বয়ের ক্ষেত্রফলের সমষ্টির সমান।\n\n` +
+  // 2. Simplified explanation requested (e.g. "ভাই, এটা সহজ করে বুঝাইয়া দেন", "সহজ করে বলুন")
+  const isAskingSimpler =
+    q.includes('সহজ করে') ||
+    q.includes('বুঝাইয়া দেন') ||
+    q.includes('বুঝিয়ে দিন') ||
+    q.includes('bujhaiya') ||
+    q.includes('sohoj') ||
+    q.includes('সহজ ভাষায়') ||
+    q.includes('একটু বুঝিয়ে');
+
+  if (isAskingSimpler && (combined.includes('পিথাগোরাস') || combined.includes('pythagor') || combined.includes('pitha') || combined.includes('ত্রিভুজ') || combined.includes('অতিভুজ'))) {
+    return `### 📐 পিথাগোরাসের উপপাদ্য — একদম সহজ উপমায় বোঝো!\n\n` +
+      `ধরো, তুমি একটি বড় চারকোনা ফুটবল মাঠের এক কোণ (A) থেকে ঠিক উল্টোদিকের কোণে (C) যেতে চাও।\n\n` +
+      `**১. তুমি দুটি উপায়ে যেতে পারো:**\n` +
+      `- **উপায় ১:** মাঠের ধার দিয়ে সোজা হেঁটে প্রথমে B কোণে গেলে এবং তারপর C কোণে গেলে। এতে তোমাকে দুটি বাহুর দূরত্ব হাঁটতে হবে (ভূমি + লম্ব)। যেমন: ৩ মিটার + ৪ মিটার = ৭ মিটার।\n` +
+      `- **উপায় ২ (শর্টকাট):** মাঠের মাঝখান দিয়ে আড়াআড়ি বা কোণাকুণি হেঁটে গেলে! এই কোণাকুণি হাঁটার রাস্তাটাই হলো সমকোণী ত্রিভুজের **"অতিভুজ"**।\n\n` +
+      `**২. পিথাগোরাসের জাদুকরী নিয়ম:**\n` +
+      `পিথাগোরাস আবিষ্কার করেন যে, কোণাকুণি রাস্তাটির ওপর যদি বর্গ আঁকা হয়, তা সোজা দুই রাস্তার বর্গের যোগফলের সমান হবে:\n\n` +
       `$$\\text{অতিভুজ}^2 = \\text{ভূমি}^2 + \\text{লম্ব}^2$$\n` +
       `$$c^2 = a^2 + b^2$$\n\n` +
-      `**২. বাস্তব উদাহরণ:**\n` +
-      `ধরি, একটি সমকোণী ত্রিভুজের ভূমি $a = 3$ সেমি এবং লম্ব $b = 4$ সেমি।\n` +
-      `তাহলে অতিভুজ $c$ হবে:\n` +
-      `$$c = \\sqrt{3^2 + 4^2} = \\sqrt{9 + 16} = \\sqrt{25} = 5 \\text{ সেমি।}$$\n\n` +
-      `**৩. গুরুত্বপূর্ণ ট্রিপলেট (Pythagorean Triples):**\n` +
-      `- $(3, 4, 5)$\n` +
-      `- $(5, 12, 13)$\n` +
-      `- $(6, 8, 10)$\n` +
-      `- $(8, 15, 17)$\n\n` +
-      `এই ত্রয়ী সংখ্যাগুলো মনে রাখলে যেকোনো বহুনির্বাচনী (MCQ) প্রশ্নের উত্তর মাত্র ৫ সেকেন্ডে দেওয়া সম্ভব!`;
+      `**৩. হিসাবটা কত সহজ দেখো:**\n` +
+      `যদি সোজা দুই বাহু হয় ৩ মিটার ও ৪ মিটার:\n` +
+      `$$3^2 + 4^2 = 9 + 16 = 25$$\n` +
+      `আর ২৫ কার বর্গ? ৫ এর বর্গ! অর্থাৎ কোণাকুণি শর্টকাট রাস্তাটি হবে ঠিক **৫ মিটার**!\n\n` +
+      `*মনে রাখবে: সমকোণী ত্রিভুজে অতিভুজই হলো সবসময় সবচেয়ে বড় বাহু।* আশা করি এবার পানির মতো পরিষ্কার হয়েছে!`;
   }
 
-  if (q.includes('নিউটন') || q.includes('গতি') || q.includes('সূত্র')) {
+  if (isAskingSimpler && (combined.includes('সালোক') || combined.includes('salok') || combined.includes('খাদ্য') || combined.includes('গাছ'))) {
+    return `### 🌱 সালোকসংশ্লেষণ — সবচেয়ে সহজ ভাষায় বোঝো!\n\n` +
+      `উদ্ভিদ কিন্তু বাজার করতে পারে না, তাই নিজের খাবার নিজেই বানায়। এটিকেই বলে সালোকসংশ্লেষণ!\n\n` +
+      `**উপমা দিয়ে বোঝো:**\n` +
+      `- **চুলা:** সূর্যের আলো (Energy)\n` +
+      `- **হাঁড়ি/কড়াই:** পাতার ভেতরের সবুজ ক্লোরোফিল\n` +
+      `- **উপাদান:** মাটি থেকে টানা পানি + বাতাস থেকে টানা কার্বন ডাই-অক্সাইড\n\n` +
+      `গাছ এই সব মিলিয়ে তৈরি করে **মিষ্টি খাবার (গ্লুকোজ)**, আর বোনাস হিসেবে আমাদের শ্বাস নেওয়ার জন্য বাতাস ছেড়ে দেয় **অক্সিজেন**!\n\n` +
+      `**সমীকরণটি মনে রাখার ট্রিক:**\n` +
+      `৬ অণু কার্বন ডাই-অক্সাইড + ১২ অণু পানি $\\rightarrow$ ১ অণু গ্লুকোজ + ৬ অণু পানি + ৬ অণু অক্সিজেন!`;
+  }
+
+  // 3. Pythagorean Theorem (পিথাগোরাসের উপপাদ্য) - matching variations, typos, Banglish
+  if (
+    q.includes('পিথাগোরাস') ||
+    q.includes('পীথাগোরাস') ||
+    q.includes('পিতাঘোরাস') ||
+    q.includes('pithagoras') ||
+    q.includes('pythagoras') ||
+    q.includes('pythagor') ||
+    (q.includes('উপপাদ্য') && (q.includes('প্রমান') || q.includes('প্রমাণ') || q.includes('সমকোণী') || q.includes('ত্রিভুজ')))
+  ) {
+    return `### 📐 পিথাগোরাসের উপপাদ্য (Pythagorean Theorem) — সূত্র ও প্রমাণ\n\n` +
+      `**১. উপপাদ্যের মূল বিবৃতি:**\n` +
+      `একটি সমকোণী ত্রিভুজের অতিভুজের ওপর অঙ্কিত বর্গক্ষেত্রের ক্ষেত্রফল অপর দুই বাহুর ওপর অঙ্কিত বর্গক্ষেত্রদ্বয়ের ক্ষেত্রফলের সমষ্টির সমান।\n\n` +
+      `**২. গাণিতিক সূত্র:**\n` +
+      `$$\\mathbf{\\text{অতিভুজ}^2 = \\text{ভূমি}^2 + \\text{লম্ব}^2}$$\n` +
+      `$$\\mathbf{c^2 = a^2 + b^2}$$\n\n` +
+      `*(যেখানে $c$ হলো সমকোণের বিপরীত বাহু অর্থাৎ অতিভুজ, এবং $a, b$ হলো অপর দুই বাহু।)*\n\n` +
+      `**৩. কীভাবে প্রমাণ করতে হয় (সংক্ষিপ্ত ও সহজ ধাপ):**\n` +
+      `- **ধাপ ১:** একটি সমকোণী ত্রিভুজ $\\Delta ABC$ নাও যার $\\angle B = 90^\\circ$।\n` +
+      `- **ধাপ ২:** অতিভুজ $AC$-এর ওপর শীর্ষবিন্দু $B$ থেকে একটি লম্ব $BD$ আঁকো।\n` +
+      `- **ধাপ ৩:** এবার মূল ত্রিভুজের সাথে উৎপন্ন দুটি ছোট ত্রিভুজ ($\\Delta ABD$ এবং $\\Delta BCD$) সদৃশকোণী প্রমাণ করো।\n` +
+      `- **ধাপ ৪:** সদৃশতার অনুপাত থেকে পাবে: $AB^2 = AC \\cdot AD$ এবং $BC^2 = AC \\cdot CD$।\n` +
+      `- **ধাপ ৫:** সমীকরণ দুটি যোগ করলেই প্রমাণিত হয়: $AB^2 + BC^2 = AC(AD + CD) = AC^2$।\n\n` +
+      `**৪. বাস্তব উদাহরণ ও শর্টকাট ট্রিপলেট:**\n` +
+      `যদি ভূমি $3$ সেমি এবং লম্ব $4$ সেমি হয়:\n` +
+      `$$c = \\sqrt{3^2 + 4^2} = \\sqrt{9 + 16} = \\sqrt{25} = 5 \\text{ সেমি।}$$\n\n` +
+      `জনপ্রিয় ট্রিপলেট: **(৩, ৪, ৫)**, **(৫, ১২, ১৩)**, **(৮, ১৫, ১৭)**।`;
+  }
+
+  // 4. Newton's Laws of Motion (নিউটনের গতিসূত্র)
+  if (
+    q.includes('নিউটন') ||
+    q.includes('newton') ||
+    q.includes('গতিসূত্র') ||
+    q.includes('গতির সূত্র') ||
+    q.includes('জড়তা') ||
+    q.includes('inertia') ||
+    q.includes('f=ma')
+  ) {
     return `### 🍎 নিউটনের ৩টি গতিসূত্র (Newton's Laws of Motion)\n\n` +
-      `**১. প্রথম সূত্র (জড়তার সূত্র):**\n` +
+      `**১. প্রথম সূত্র (জড়তা ও বলের সংজ্ঞা):**\n` +
       `বাইরে থেকে কোনো বল প্রয়োগ না করলে স্থির বস্তু চিরকাল স্থির থাকবে এবং গতিশীল বস্তু সুষম দ্রুতিতে সরলপথে চলতে থাকবে।\n` +
-      `*(এখান থেকে বল ও জড়তার সংজ্ঞা পাওয়া যায়।)*\n\n` +
-      `**২. দ্বিতীয় সূত্র (ভরবেগের পরিবর্তনের হার):**\n` +
+      `*বাস্তব উদাহরণ: বাস হঠাৎ চলতে শুরু করলে যাত্রী পেছনের দিকে হেলে পড়ে (স্থিতিজড়তা), আর ব্রেক কষলে সামনের দিকে ঝুঁকে পড়ে (গতিজড়তা)।*\n\n` +
+      `**২. দ্বিতীয় সূত্র (বলের পরিমাপ):**\n` +
       `বস্তুর ভরবেগের পরিবর্তনের হার তার ওপর প্রযুক্ত বলের সমানুপাতিক এবং বল যেদিকে কাজ করে ভরবেগের পরিবর্তনও সেদিকে ঘটে।\n` +
       `$$\\mathbf{F = ma}$$\n` +
-      `*(এখানে $F = \\text{বল}$, $m = \\text{ভর}$, $a = \\text{ত্বরণ}$)*\n\n` +
+      `*(বল = ভর × ত্বরণ, একক: নিউটন $N$)*\n\n` +
       `**৩. তৃতীয় সূত্র (ক্রিয়া ও প্রতিক্রিয়া):**\n` +
-      `প্রত্যেক ক্রিয়ারই একটি সমান ও বিপরীত প্রতিক্রিয়া রয়েছে ($F_1 = -F_2$)।\n` +
-      `*উদাহরণ: বন্দুক থেকে গুলি ছুড়লে বন্দুক পেছনের দিকে ধাক্কা দেয়, অথবা নৌকার বৈঠা দিয়ে পানিতে ধাক্কা দিলে নৌকা সামনে এগোয়।*`;
+      `প্রত্যেক ক্রিয়ারই একটি সমান ও বিপরীত প্রতিক্রিয়া রয়েছে ($F_1 = -F_2$)।\n` +
+      `*বাস্তব উদাহরণ: বন্দুক ছুড়লে পেছনে ধাক্কা দেয়, অথবা রকেট জ্বালানি নিচের দিকে নির্গমন করে ওপরের দিকে উড়ে যায়।*`;
   }
 
-  if (q.includes('tense') || q.includes('টেন্স') || q.includes('গ্রামার')) {
-    return `### 🇬🇧 ইংরেজি Tense চেনার ও মনে রাখার সহজ কৌশল\n\n` +
+  // 5. English Tense & Grammar / বাংলা ব্যাকরণ
+  if (q.includes('tense') || q.includes('টেন্স') || q.includes('কারক') || q.includes('সমাস')) {
+    if (q.includes('কারক')) {
+      return `### 📖 বাংলা ব্যাকরণ — কারক নির্ণয়ের সহজ কৌশল\n\n` +
+        `বাক্যের ক্রিয়াপদের সাথে নামপদের যে সম্পর্ক, তাকে **কারক** বলে। কারক মূলত ৬ প্রকার:\n\n` +
+        `১. **কর্তৃকারক:** কে বা কারা দিয়ে প্রশ্ন করলে উত্তর পাওয়া যায়। (যেমন: *বুলবুলিতে* ধান খেয়েছে)\n` +
+        `২. **কর্মকারক:** কি বা কাকে দিয়ে প্রশ্ন করলে উত্তর পাওয়া যায়। (যেমন: *ঘোড়াকে* চাবুক মারো)\n` +
+        `৩. **করণকারক:** কি দিয়ে বা কিসের সাহায্যে? (যেমন: *কলম দিয়ে* লিখি)\n` +
+        `৪. **সম্প্রদানকারক:** নিঃস্বার্থভাবে দান করা বোঝালে। (যেমন: *ভিক্ষুককে* ভিক্ষা দাও)\n` +
+        `৫. **অপাদানকারক:** কোথা থেকে উৎপন্ন, বিচ্যুত বা ভীত? (যেমন: *গাছ থেকে* পাতা পড়ে)\n` +
+        `৬. **অধিকরণকারক:** কোথায় বা কোন সময়ে? (যেমন: *নদীতে* মাছ আছে, *তিলে* তৈল আছে)`;
+    }
+
+    return `### 🇬🇧 ইংরেজি Tense মনে রাখার ম্যাজিক চার্ট\n\n` +
       `Tense প্রধানত ৩ প্রকার: **Present, Past, Future**। প্রতিটির রয়েছে ৪টি রূপ:\n\n` +
-      `| Tense | সাহায্যকারী ক্রিয়া (Auxiliary) | মূল ক্রিয়ার রূপ | উদাহরণ |\n` +
+      `| Tense | সাহায্যকারী verb | মূল verb | সহজ উদাহরণ |\n` +
       `| :--- | :--- | :--- | :--- |\n` +
-      `| **Present Indefinite** | Do / Does (প্রশ্ন ও নাবোধকে) | $V_1$ (he/she হলে s/es) | He plays football. |\n` +
-      `| **Present Continuous** | am / is / are | $V_1 + \\text{ing}$ | He is playing football. |\n` +
-      `| **Present Perfect** | have / has | $V_3$ (Past Participle) | He has played football. |\n` +
-      `| **Past Indefinite** | Did (প্রশ্ন ও নাবোধকে) | $V_2$ (Past Form) | He played football. |\n` +
-      `| **Future Indefinite** | will / shall | $V_1$ (Base Form) | He will play football. |\n\n` +
-      `💡 **ম্যাজিক টিপ:** Continuous মানেই ক্রিয়ার শেষে \`-ing\`, আর Perfect মানেই মূল verb-এর ৩ নম্বর রূপ ($V_3$)।`;
+      `| **Present Indefinite** | do / does | $V_1$ (he/she হলে s/es) | I read books. |\n` +
+      `| **Present Continuous** | am / is / are | $V_1 + \\text{ing}$ | I am reading. |\n` +
+      `| **Present Perfect** | have / has | $V_3$ (Past Participle) | I have read. |\n` +
+      `| **Past Indefinite** | did | $V_2$ (Past Form) | I read yesterday. |\n` +
+      `| **Future Indefinite** | will / shall | $V_1$ (Base Form) | I will read. |\n\n` +
+      `💡 **সহজ নিয়ম:** Continuous দেখতে পেলেই \`-ing\` হবে, আর Perfect দেখতে পেলেই মূল verb-এর ৩ নম্বর রূপ ($V_3$) বসবে!`;
   }
 
-  // Generic contextual educational response
+  // 6. Generic contextual educational response with high relevance
   return `### 🎓 শিক্ষামূলক উত্তর ও আলোচনা (${className} ${chapter ? '— ' + chapter : ''})\n\n` +
     `আপনার প্রশ্ন: **"${userQuery}"**\n\n` +
-    `**১. মূল ধারণা:**\n` +
+    `**১. মূল ধারণা ও শিক্ষাক্রম ভিত্তিক ব্যাখ্যা:**\n` +
     `জাতীয় শিক্ষাক্রম ও পাঠ্যপুস্তক বোর্ডের (NCTB) পাঠ্যবই অনুযায়ী এই বিষয়টির মূল তাৎপর্য হলো তাত্ত্বিক ধারণাকে বাস্তব জীবনের উদাহরণের সাথে সংযুক্ত করা।\n\n` +
     `**২. সহজ কথায় ব্যাখ্যা:**\n` +
-    `বিষয়টি গভীরভাবে মনে রাখার জন্য পাঠ্যপুস্তকের সংজ্ঞাসমূহ মুখস্থ করার পাশাপাশি এর বাস্তব প্রয়োগ খেয়াল করুন। যেমন গণিত বা বিজ্ঞানের ক্ষেত্রে প্রতিটি সূত্রের পেছনের কারণ বা লজিক বুঝলে পরীক্ষার খাতায় ভুল হওয়ার সম্ভাবনা কমে যায়।\n\n` +
+    `বিষয়টি গভীরভাবে মনে রাখার জন্য পাঠ্যপুস্তকের সংজ্ঞাসমূহ কেবল মুখস্থ না করে এর বাস্তব প্রয়োগ খেয়াল করুন। যেমন গণিত বা বিজ্ঞানের ক্ষেত্রে প্রতিটি সূত্রের পেছনের কারণ বা লজিক বুঝলে পরীক্ষার খাতায় ভুল হওয়ার সম্ভাবনা কমে যায়।\n\n` +
     `**৩. পরীক্ষায় ভালো করার পরামর্শ:**\n` +
-    `- অধ্যায়ের শেষে থাকা সংক্ষিপ্ত প্রশ্নোত্তরগুলো রিভিশন দিন।\n` +
-    `- নিয়মিত আমাদের **প্রশ্নব্যাংক** ও **মডেল টেস্ট** সমাধান করে নিজের দুর্বলতাগুলো চিহ্নিত করুন।\n` +
-    `- যেকোনো সুনির্দিষ্ট সমস্যা বা সূত্রের ধাপে ধাপে সমাধান জানতে আমাকে বিস্তারিত লিখুন!`;
+    `- অধ্যায়ের শেষে থাকা সংক্ষিপ্ত প্রশ্নোত্তরগুলো বেশি করে অনুশীলন করুন।\n` +
+    `- নিয়মিত আমাদের **প্রশ্নব্যাংক** ও **মডেল টেস্ট** সমাধান করে নিজের প্রস্তুতি ঝালিয়ে নিন।\n` +
+    `- যেকোনো সুনির্দিষ্ট সমস্যা বা সূত্রের ধাপে ধাপে সমাধান জানতে আমাকে বিস্তারিত প্রশ্ন করতে পারেন!`;
 }
 
 // Health check endpoint
@@ -833,14 +915,40 @@ app.get('/api/ai/status', (req, res) => {
 
 // AI Chat endpoint
 app.post('/api/ai/chat', async (req, res) => {
+  // Always guarantee standard JSON headers
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+
   try {
-    const { messages, context } = req.body;
-    if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      return res.status(400).json({ error: 'Messages array is required.' });
+    const rawBody = req.body || {};
+    let messages: Array<{ role?: string; sender?: string; text?: string; imageBase64?: string; imageMimeType?: string }> = [];
+    if (Array.isArray(rawBody.messages) && rawBody.messages.length > 0) {
+      messages = rawBody.messages;
+    } else {
+      const singleText = rawBody.message || rawBody.prompt || rawBody.text || rawBody.query || '';
+      if (singleText) {
+        messages = [{ role: 'user', text: String(singleText) }];
+      }
+    }
+
+    const context = rawBody.context || {
+      classId: rawBody.classId,
+      subjectId: rawBody.subjectId,
+      chapterTitle: rawBody.chapterTitle,
+      mode: rawBody.mode,
+    };
+
+    if (messages.length === 0) {
+      const fallbackReply = generateEducationalFallback('পড়াশোনা সংক্রান্ত জিজ্ঞাসা', context);
+      return res.status(200).json({
+        reply: fallbackReply,
+        model: 'educational-curriculum-engine',
+        success: true,
+      });
     }
 
     const lastMessage = messages[messages.length - 1];
-    const userPrompt = lastMessage?.text || '';
+    const userPrompt = (lastMessage?.text || '').trim();
+    const previousMessage = messages.length > 1 ? (messages[messages.length - 2]?.text || '') : '';
 
     // Build system instruction
     const classText = context?.classId ? `শ্রেণি: ${context.classId.replace('class-', '')}ম শ্রেণি, ` : '';
@@ -855,53 +963,86 @@ app.post('/api/ai/chat', async (req, res) => {
 বর্তমান প্রেক্ষাপট:
 ${classText}${subjectText}${chapterText}পদ্ধতি: ${modeText}
 
-নিয়মাবলী:
+নিয়মাবলী ও নির্দেশিকা:
 ১. সর্বদা শুদ্ধ, প্রাঞ্জল ও আকর্ষণীয় বাংলায় উত্তর দিন। ইংরেজি বিষয়ের ক্ষেত্রে প্রয়োজনীয় ইংরেজি বাক্য ও বাংলা অনুবাদ দিন।
 ২. উত্তর সহজ ভাষায় গুছিয়ে দিন। বুলেট পয়েন্ট, টেবিল ও বোল্ড টেক্সট ব্যবহার করে পড়তে সুবিধা তৈরি করুন।
-৩. অঙ্কের ক্ষেত্রে সরাসরি উত্তর না দিয়ে প্রতিটি ধাপ (Step 1, Step 2...) সুন্দরভাবে ব্যাখ্যা করুন।
-৪. বিজ্ঞানের ক্ষেত্রে বাস্তব জীবনের উদাহরণ ও পরীক্ষার টিপস দিন।
-৫. সর্বদা সত্য ও নির্ভুল তথ্য প্রদান করুন।
-৬. শেষে শিক্ষার্থীকে উৎসাহিত করুন এবং প্রাসঙ্গিক পরবর্তী প্রশ্ন করার সুযোগ রাখুন।
+৩. অঙ্কের ক্ষেত্রে সরাসরি উত্তর না দিয়ে প্রতিটি ধাপ (ধাপ ১, ধাপ ২...) সুন্দরভাবে ও সূত্রসহ বুঝিয়ে দিন।
+৪. বিজ্ঞানের ক্ষেত্রে বাস্তব জীবনের উদাহরণ, রূপক ও পরীক্ষার টিপস দিন।
+৫. ভাষা ও বানানের সহনশীলতা:
+   - শিক্ষার্থী যদি ভুল বানান (যেমন: 'প্রমান', 'সালেকসংশ্লেষণ', 'পীথাগোরাস'), কথ্য বাংলা (যেমন: 'ভাই, এটা সহজ করে বুঝাইয়া দেন', 'কেমনে করব', 'একটু বুঝিয়ে বলুন'), অসম্পূর্ণ বাক্য বা ভয়েস টাইপিংয়ের ভুল লেখা দেয়, তবে ভুল শুধরে নিয়ে আসল প্রশ্নের সঠিক ও বিস্তারিত উত্তর দিন।
+   - শিক্ষার্থী যদি বাংলিশ (যেমন: 'saloksonshleshon ki', 'pithagoras theorem ki', 'photosynthesis er equation ki') বা বাংলা-ইংরেজি মিশিয়ে প্রশ্ন করে, তবে সম্পূর্ণ বিষয়টি বুঝে বাংলায় চমৎকার উত্তর দিন।
+   - শিক্ষার্থী যদি সংক্ষিপ্ত প্রশ্ন বা ফলো-আপ করে (যেমন: 'এটা সহজ করে বুঝাইয়া দেন'), তবে পূর্ববর্তী আলোচনার সূত্র ধরে আরও সহজ বাস্তব উদাহরণের মাধ্যমে প্রাঞ্জল ভাষায় বুঝিয়ে বলুন।
+৬. সর্বদা সত্য ও নির্ভুল তথ্য প্রদান করুন এবং শেষে শিক্ষার্থীকে উৎসাহিত করুন।
 `.trim();
 
     const hasImage = Boolean(lastMessage?.imageBase64 && lastMessage?.imageMimeType);
-    const contentParts: any[] = [];
+    
+    // Build multi-turn context (last 6 messages)
+    const recentMessages = messages.slice(-6);
+    const contents: any[] = [];
+    
+    for (let i = 0; i < recentMessages.length; i++) {
+      const msg = recentMessages[i];
+      const isLast = i === recentMessages.length - 1;
+      const role = (msg.role === 'assistant' || msg.role === 'model' || msg.sender === 'assistant') ? 'model' : 'user';
+      
+      const parts: any[] = [];
+      if (isLast && hasImage && msg.imageBase64 && msg.imageMimeType) {
+        const cleanBase64 = msg.imageBase64.replace(/^data:[^;]+;base64,/, '');
+        parts.push({
+          inlineData: {
+            mimeType: msg.imageMimeType,
+            data: cleanBase64,
+          },
+        });
+      }
+      
+      const text = (msg.text || '').trim();
+      if (text) {
+        parts.push({ text });
+      } else if (isLast) {
+        parts.push({ text: 'অনুগ্রহ করে বিস্তারিত বুঝিয়ে বলুন।' });
+      }
+      
+      if (parts.length > 0) {
+        if (contents.length > 0 && contents[contents.length - 1].role === role) {
+          contents[contents.length - 1].parts.push(...parts);
+        } else {
+          contents.push({ role, parts });
+        }
+      }
+    }
 
-    if (hasImage) {
-      const cleanBase64 = lastMessage.imageBase64.replace(/^data:[^;]+;base64,/, '');
-      contentParts.push({
-        inlineData: {
-          mimeType: lastMessage.imageMimeType,
-          data: cleanBase64,
-        },
+    // Gemini API requires first turn to be 'user'
+    while (contents.length > 0 && contents[0].role === 'model') {
+      contents.shift();
+    }
+    if (contents.length === 0) {
+      contents.push({
+        role: 'user',
+        parts: [{ text: userPrompt || 'হ্যালো, আমি পড়াশোনায় সাহায্য চাই।' }],
       });
     }
 
-    const promptText = userPrompt.trim() || 'অনুগ্রহ করে এই ছবিটিতে থাকা প্রশ্ন বা সমীকরণটি বিশ্লেষণ করে ধাপে ধাপে সমাধান বুঝিয়ে দিন।';
-    contentParts.push({
-      text: `${systemInstruction}\n\nশিক্ষার্থীর প্রশ্ন:\n${promptText}`,
-    });
-
     const aiResult = await callGeminiGenerate({
-      contents: [
-        {
-          role: 'user',
-          parts: contentParts,
-        },
-      ],
+      contents,
+      systemInstruction,
       hasImage,
     });
 
-    return res.json({
-      reply: aiResult.text,
+    const reply = (aiResult.text || '').trim() || generateEducationalFallback(userPrompt, { ...context, previousQuery: previousMessage });
+
+    return res.status(200).json({
+      reply,
       model: aiResult.model,
       success: true,
     });
   } catch (error: any) {
     console.warn('Gemini API Error in /api/ai/chat, serving curriculum fallback:', error?.message || error);
     const lastMessage = req.body?.messages?.[req.body?.messages?.length - 1]?.text || '';
-    const fallbackReply = generateEducationalFallback(lastMessage, req.body?.context);
-    return res.json({
+    const previousMessage = req.body?.messages?.length > 1 ? req.body.messages[req.body.messages.length - 2]?.text : '';
+    const fallbackReply = generateEducationalFallback(lastMessage, { ...req.body?.context, previousQuery: previousMessage });
+    return res.status(200).json({
       reply: fallbackReply,
       model: 'educational-curriculum-engine',
       success: true,

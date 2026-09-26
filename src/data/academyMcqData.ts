@@ -1,62 +1,202 @@
 import { QuizQuestion } from '../types';
+import { allNctbMcqList } from './mcq';
 import { class9McqList } from './mcq/class9Mcq';
 import { class10McqList } from './mcq/class10Mcq';
 import { SSC_QUIZZES } from './curriculum/sscLessonsQuizzes';
 import { HSC_QUIZZES } from './curriculum/hscLessonsQuizzes';
 
 /**
- * Filter and sanitize quiz questions so no placeholder distractor exists.
+ * Filter and sanitize quiz questions so no placeholder distractor exists,
+ * restoring full un-truncated text and balancing correct answers across options.
  */
 function sanitizeQuestion(q: QuizQuestion): QuizQuestion {
-  // If options contain placeholder strings, provide realistic academic distractors
-  const hasPlaceholder = q.options.some(
-    (opt) =>
-      opt.includes('ভুল উত্তর') ||
-      opt.includes('অপ্রাসঙ্গিক') ||
-      opt.includes('তত্ত্ববহির্ভূত') ||
-      opt.includes('আংশিক অসত্য')
+  const dummyPatterns = [
+    'ভুল উত্তর',
+    'অপ্রাসঙ্গিক',
+    'তত্ত্ববহির্ভূত',
+    'আংশিক অসত্য',
+    'ব্যক্তিগত মতামত',
+    'কাল্পনিক',
+    'প্রচলিত লোককথা',
+    'মুখস্থ করে',
+    'অযৌক্তিক',
+    'কোনো ব্যবহারিক',
+    'খাতা ভরানো',
+    'আন্দাজে',
+    'বহির্ভূত',
+    'ভিত্তি নেই',
+    'সীমিত কিছু ক্ষেত্রে',
+    'পৃষ্ঠাসংখ্যা বাড়ানো',
+    'বিভ্রান্তিতে ফেলা',
+    'জটিলতা তৈরি করা',
+    'পর্যাপ্ত তথ্য বিশ্লেষণ',
+    'তাত্ত্বিক পর্যবেক্ষণ',
+    'পরীক্ষামূলক প্রমাণ',
+  ];
+
+  const hasPlaceholder = q.options?.some(
+    (opt) => opt.endsWith('...') || dummyPatterns.some((p) => opt.includes(p))
   );
 
-  if (!hasPlaceholder && q.options.length === 4) {
+  // If already clean and has 4 options with valid balanced answer index, preserve it
+  if (
+    !hasPlaceholder &&
+    q.options &&
+    q.options.length === 4 &&
+    typeof q.correctAnswerIndex === 'number' &&
+    q.correctAnswerIndex >= 0 &&
+    q.correctAnswerIndex < 4
+  ) {
     return q;
   }
 
-  // Generate realistic Bengali distractors based on subject/question
-  const correctText = q.options[q.correctAnswerIndex] || q.options[0] || 'সঠিক উত্তর';
+  // Restore un-truncated correct answer text if available in explanation
+  let correctText =
+    q.options[q.correctAnswerIndex] || q.options[0] || 'সঠিক উত্তর';
+  if (correctText.endsWith('...') && q.explanation && q.explanation.includes('সঠিক উত্তর:')) {
+    const extracted = q.explanation
+      .split('সঠিক উত্তর:')[1]
+      .trim()
+      .replace(/[।.]+$/, '')
+      .trim();
+    if (extracted.length > 3) {
+      correctText = extracted;
+    }
+  }
 
   // Smart subject-specific alternative distractors
   const genericAlts: Record<string, string[]> = {
-    physics: ['বেগ ও ত্বরণের পরিবর্তন', 'শক্তি ও কাজের নিত্যতা', 'ভরবেগ ও স্থিতি জড়তা', 'মহাকর্ষ ও তড়িৎ বল'],
-    chemistry: ['যোজ্যতা ইলেকট্রন সংখ্যা', 'পরমাণুর নিউক্লিয়াস গঠন', 'রাসায়নিক সাম্যাবস্থা', 'সমযোজী ও আয়নিক বন্ধন'],
-    biology: ['মাইটোকন্ড্রিয়া ও এটিপি তৈরি', 'ক্লোরোপ্লাস্ট ও সালোকসংশ্লেষণ', 'ডিএনএ ও ক্রোমোজোম', 'জাইলেম ও ফ্লোয়েম কলা'],
-    math: ['বীজগাণিতিক রাশিমালা', 'ত্রিকোণমিতিক অনুপাত', 'সমদ্বিবাহু ত্রিভুজ', 'পরিসংখ্যান ও মধ্যক'],
-    higher_math: ['স্থানাঙ্ক জ্যামিতি ও ঢাল', 'দ্বিপদী বিস্তৃতি', 'ভেক্টর রাশি ও স্কেলার গুণন', 'সম্ভাবনা ও বিন্যাস'],
-    bangla: ['রবীন্দ্রনাথ ঠাকুর', 'কাজী নজরুল ইসলাম', 'বঙ্কিমচন্দ্র চট্টোপাধ্যায়', 'মাইকেল মধুসূদন দত্ত'],
-    english: ['Present Perfect Tense', 'Past Continuous Tense', 'Subject-Verb Agreement', 'Subordinate Clause'],
-    ict: ['বাইনারি সংখ্যা পদ্ধতি', 'লজিক গেট ও ট্রুথ টেবিল', 'এইচটিএমএল ও সিএসএস', 'ডাটাবেজ ম্যানেজমেন্ট সিস্টেম'],
-    bgs: ['১৯৫২ সালের ভাষা আন্দোলন', '১৯৭১ সালের মুক্তিযুদ্ধ', 'সংবিধানের মৌলিক নীতিমালা', 'জাতিসংঘ ও আন্তর্জাতিক শান্তি'],
-    accounting: ['দুতরফা দাখিলা পদ্ধতি', 'রেওয়ামিল ও খতিয়ান', 'আর্থিক বিবরণী', 'মূলধন ও মুনাফাজাতীয় লেনদেন'],
-    finance: ['অর্থের সময়মূল্য', 'বাণিজ্যিক ব্যাংক ও ঋণ', 'ঝুঁকি ও মুনাফার হার', 'মূলধনি আয়ব্যয় প্রাক্কলন'],
-    economics: ['চাহিদা ও যোগানের বিধি', 'উৎপাদন সম্ভাবনা রেখা', 'জাতীয় আয় পরিমাপ', 'বাজারের ভারসাম্য দাম'],
-    civics: ['নাগরিক অধিকার ও কর্তব্য', 'আইনের শাসন ও ন্যায়বিচার', 'গণতন্ত্র ও রাজনৈতিক দল', 'স্থানীয় সরকার কাঠামো'],
+    physics: [
+      'বল ও ভরবেগের সংরক্ষণশীলতা নীতি',
+      'অভিকর্ষজ ত্বরণ ও মুক্ত পতন',
+      'তড়িৎ ক্ষেত্র ও বিভব পার্থক্য',
+      'আলোর পূর্ণ অভ্যন্তরীণ প্রতিফলন',
+    ],
+    chemistry: [
+      'অরবিটাল সংকরায়ণ ও সমযোজী বন্ধন',
+      'ইলেকট্রন আসক্তি ও পর্যায়বৃত্ত ধর্ম',
+      'লা-শাতেলিয়ারের সাম্যাবস্থা নীতি',
+      'জারণ-বিজারণ ও ইলেকট্রন স্থানান্তর',
+    ],
+    biology: [
+      'মাইটোকন্ড্রিয়া ও এটিপি সংশ্লেষণ',
+      'ডিএনএ প্রতিলিপন ও প্রোটিন তৈরি',
+      'মায়োসিস বিভাজনে ক্রসিং ওভার',
+      'জাইলেম ও ফ্লোয়েমের পরিবহন ব্যবস্থা',
+    ],
+    math: [
+      'দ্বিপদী বিস্তৃতি ও সাধারণ পদ',
+      'পিথাগোরাসের জ্যামিতিক উপপাদ্য',
+      'স্থানাঙ্ক জ্যামিতির সরলরেখার ঢাল',
+      'ত্রিকোণমিতিক অভেদাবলী ও মান',
+    ],
+    higher_math: [
+      'ম্যাট্রিক্সের গুণন ও বিপরীত ম্যাট্রিক্স',
+      'অন্তরীকরণ ও পরিবর্তনের হার',
+      'সমাকলন ও আবদ্ধ ক্ষেত্রফল',
+      'সমতলীয় ভেক্টরের ডট ও ক্রস গুণন',
+    ],
+    bangla: [
+      'রবীন্দ্রনাথ ঠাকুরের মানবতাবাদী দর্শন',
+      'কাজী নজরুল ইসলামের সাম্যবাদী চেতনা',
+      'তৎপুরুষ ও বহুব্রীহি সমাস',
+      'সাধু ও চলিত ভাষারীতির ব্যাকরণ',
+    ],
+    english: [
+      'Subject-Verb Agreement Rules',
+      'Past Perfect Tense Application',
+      'Appropriate Prepositions',
+      'Active to Passive Voice Transformation',
+    ],
+    ict: [
+      'বাইনারি ও হেক্সাডেসিমেল রূপান্তর',
+      'মৌলিক ও সার্বজনীন লজিক গেট',
+      'HTML ও CSS দিয়ে ওয়েব কাঠামো',
+      'IPv4 ও IPv6 আইপি এড্রেসিং',
+    ],
+    bgs: [
+      '১৯৫২ সালের মহান ভাষা আন্দোলন',
+      '১৯৭১ সালের মুক্তিযুদ্ধ ও সংবিধান',
+      'আইনের শাসন ও মৌলিক অধিকার',
+      'জাতিসংঘ ও আন্তর্জাতিক সহযোগিতা',
+    ],
+    accounting: [
+      'দুতরফা দাখিলার স্বর্ণসূত্র',
+      'রেওয়ামিলের ডেবিট ও ক্রেডিট সমতা',
+      'আর্থিক অবস্থার বিবরণী ও নিট লাভ',
+      'স্থায়ী সম্পদের অবচয় নির্ণয়',
+    ],
+    finance: [
+      'অর্থের বর্তমান মূল্য ও বাট্টাকরণ',
+      'বাণিজ্যিক ব্যাংকের ঋণ আমানত',
+      'ঝুঁকি ও প্রত্যাশিত আয়ের হার',
+      'মূলধনি বাজেট প্রণয়ন পদ্ধতি',
+    ],
+    economics: [
+      'চাহিদা ও যোগানের ভারসাম্য দাম',
+      'উৎপাদন সম্ভাবনা রেখা (PPC)',
+      'জাতীয় আয় পরিমাপের পদ্ধতি',
+      'মুদ্রাস্ফীতি নিয়ন্ত্রণ ও রাজস্ব নীতি',
+    ],
+    civics: [
+      'গণতান্ত্রিক রাষ্ট্রব্যবস্থা ও নাগরিক অধিকার',
+      'আইনের শাসন ও ন্যায়বিচার প্রতিষ্ঠা',
+      'সুশাসন প্রতিষ্ঠার মৌলিক উপাদান',
+      'স্থানীয় সরকার কাঠামোর স্তর',
+    ],
   };
 
-  const subjectKey = (q.subjectId || 'general').toLowerCase().replace(/_1st|_2nd/g, '');
-  const pool = genericAlts[subjectKey] || ['প্রথম বিকল্প সিদ্ধান্ত', 'দ্বিতীয় নিয়ামক উপাদান', 'তৃতীয় তুলনামূলক বিশ্লেষণ', 'চতুর্থ সার্বিক সিদ্ধান্ত'];
-
+  const subjectKey = (q.subjectId || 'physics')
+    .toLowerCase()
+    .replace(/_1st|_2nd/g, '');
+  const pool = genericAlts[subjectKey] || genericAlts.physics;
   const filteredPool = pool.filter((p) => p !== correctText);
-  const options = [
-    correctText,
-    filteredPool[0] || 'পর্যাপ্ত তথ্য বিশ্লেষণ',
-    filteredPool[1] || 'তাত্ত্বিক পর্যবেক্ষণ',
-    filteredPool[2] || 'পরীক্ষামূলক প্রমাণ',
-  ];
+
+  // Collect valid existing options
+  const validDistractors = (q.options || []).filter(
+    (opt, idx) =>
+      idx !== q.correctAnswerIndex &&
+      opt !== correctText &&
+      !opt.endsWith('...') &&
+      !dummyPatterns.some((p) => opt.includes(p))
+  );
+
+  while (validDistractors.length < 3) {
+    const candidate = filteredPool[validDistractors.length % filteredPool.length];
+    if (!validDistractors.includes(candidate) && candidate !== correctText) {
+      validDistractors.push(candidate);
+    } else {
+      validDistractors.push(
+        filteredPool[0] || 'যথাযথ তাত্ত্বিক পর্যবেক্ষণ ও প্রমাণ'
+      );
+    }
+  }
+
+  // Deterministically place correct answer across 0, 1, 2, 3
+  const hash = Math.abs(
+    q.id
+      .split('')
+      .reduce((acc, char) => (acc << 5) - acc + char.charCodeAt(0), 0)
+  );
+  const targetIndex = hash % 4;
+
+  const finalOptions: string[] = [];
+  let dIdx = 0;
+  for (let i = 0; i < 4; i++) {
+    if (i === targetIndex) {
+      finalOptions.push(correctText);
+    } else {
+      finalOptions.push(validDistractors[dIdx++]);
+    }
+  }
 
   return {
     ...q,
-    options,
-    correctAnswerIndex: 0,
-    explanation: q.explanation || `সঠিক উত্তর: ${correctText}`,
+    options: finalOptions,
+    correctAnswerIndex: targetIndex,
+    explanation:
+      q.explanation ||
+      `সঠিক উত্তর: ${correctText}। পাঠ্যবইয়ের সংশ্লিষ্ট নিয়মানুযায়ী এটি সঠিক।`,
   };
 }
 
@@ -406,3 +546,35 @@ export function getFilteredAcademyMcqs(
     return true;
   });
 }
+
+/**
+ * Return all platform MCQs consolidated across NCTB (6-10), SSC, and HSC
+ */
+export function getAllPlatformMcqs(): QuizQuestion[] {
+  const map = new Map<string, QuizQuestion>();
+  allNctbMcqList.forEach((q) => map.set(q.id, q));
+  getAllSscMcqs().forEach((q) => map.set(q.id, q));
+  getAllHscMcqs().forEach((q) => map.set(q.id, q));
+  return Array.from(map.values());
+}
+
+/**
+ * Total count of authentic MCQs across all classes, SSC and HSC
+ */
+export function getTotalPlatformMcqCount(): number {
+  return getAllPlatformMcqs().length;
+}
+
+/**
+ * Return MCQs for a given classId (handling class-6..10, ssc, hsc)
+ */
+export function getPlatformMcqsByClass(classId: string): QuizQuestion[] {
+  if (classId === 'ssc') {
+    return getAllSscMcqs();
+  }
+  if (classId === 'hsc') {
+    return getAllHscMcqs();
+  }
+  return allNctbMcqList.filter((q) => q.classId === classId);
+}
+

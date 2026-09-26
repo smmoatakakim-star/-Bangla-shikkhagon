@@ -2,7 +2,8 @@ import React from 'react';
 import { BookOpen, GraduationCap, Award, ArrowRight, CheckCircle2, Layers, HelpCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ClassId } from '../types';
-import { allNctbMcqList } from '../data/mcq';
+import { getPlatformMcqsByClass } from '../data/academyMcqData';
+import { toBengaliDigits } from '../utils/banglaUtils';
 
 export const ClassesPage: React.FC = () => {
   const { classes, subjects, chapters, quizzes, navigate } = useApp();
@@ -75,7 +76,7 @@ export const ClassesPage: React.FC = () => {
                     {classChapters.length || cls.totalChapters} অধ্যায়
                   </span>
                   <span className="px-1.5 py-0.5 rounded bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300">
-                    {allNctbMcqList.filter((q) => q.classId === cls.id).length}+ MCQ
+                    {toBengaliDigits(getPlatformMcqsByClass(cls.id).length)}+ MCQ
                   </span>
                 </div>
 

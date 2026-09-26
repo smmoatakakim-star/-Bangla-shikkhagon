@@ -22,6 +22,12 @@ import {
   ALL_SUBJECTS,
   ALL_CHAPTERS,
 } from '../data/curriculumData';
+import { SSC_QUIZZES, SSC_LESSONS } from '../data/curriculum/sscLessonsQuizzes';
+import { HSC_QUIZZES, HSC_LESSONS } from '../data/curriculum/hscLessonsQuizzes';
+import { SSC_CHAPTERS } from '../data/curriculum/sscChapters';
+import { HSC_CHAPTERS } from '../data/curriculum/hscChapters';
+import { SSC_SUBJECTS } from '../data/curriculum/sscSubjects';
+import { HSC_SUBJECTS } from '../data/curriculum/hscSubjects';
 import {
   getChapterQuestionBank,
   getPartQuiz,
@@ -209,12 +215,23 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_PREFIX = 'bsh_v1_';
 
+// Purge any bulky legacy keys that previously exceeded the browser quota
+try {
+  localStorage.removeItem(STORAGE_PREFIX + 'chapters');
+  localStorage.removeItem(STORAGE_PREFIX + 'lessons');
+  localStorage.removeItem(STORAGE_PREFIX + 'quizzes');
+  localStorage.removeItem(STORAGE_PREFIX + 'classes');
+  localStorage.removeItem(STORAGE_PREFIX + 'subjects');
+} catch {
+  // Ignore in environments where localStorage is restricted
+}
+
 function getStorageItem<T>(key: string, fallback: T): T {
   try {
     const item = localStorage.getItem(STORAGE_PREFIX + key);
     return item ? JSON.parse(item) : fallback;
   } catch (e) {
-    console.error('Storage error for ' + key, e);
+    console.warn('Storage read note for ' + key, e);
     return fallback;
   }
 }
@@ -222,8 +239,22 @@ function getStorageItem<T>(key: string, fallback: T): T {
 function setStorageItem<T>(key: string, value: T): void {
   try {
     localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value));
-  } catch (e) {
-    console.error('Failed to set storage for ' + key, e);
+  } catch (e: any) {
+    if (e?.name === 'QuotaExceededError' || e?.code === 22 || e?.code === 1014) {
+      console.warn(`LocalStorage quota reached when saving "${key}". Purging legacy cached items.`);
+      try {
+        localStorage.removeItem(STORAGE_PREFIX + 'chapters');
+        localStorage.removeItem(STORAGE_PREFIX + 'lessons');
+        localStorage.removeItem(STORAGE_PREFIX + 'quizzes');
+        localStorage.removeItem(STORAGE_PREFIX + 'classes');
+        localStorage.removeItem(STORAGE_PREFIX + 'subjects');
+        localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value));
+      } catch {
+        // Degrade safely without throwing fatal error
+      }
+      return;
+    }
+    console.warn('Failed to set storage for ' + key, e);
   }
 }
 
@@ -254,29 +285,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [classes, setClasses] = useState<ClassInfo[]>(() => {
-    const saved = getStorageItem<ClassInfo[]>('classes', ALL_CLASSES);
-    if (!saved || saved.length < ALL_CLASSES.length) return ALL_CLASSES;
-    return saved;
+    const custom = getStorageItem<ClassInfo[]>('custom_classes', []);
+    const baseIds = new Set(ALL_CLASSES.map((c) => c.id));
+    return [...ALL_CLASSES, ...custom.filter((c) => !baseIds.has(c.id))];
   });
   const [subjects, setSubjects] = useState<SubjectInfo[]>(() => {
-    const saved = getStorageItem<SubjectInfo[]>('subjects', ALL_SUBJECTS);
-    if (!saved || saved.length < ALL_SUBJECTS.length) return ALL_SUBJECTS;
-    return saved;
+    const custom = getStorageItem<SubjectInfo[]>('custom_subjects', []);
+    const baseIds = new Set(ALL_SUBJECTS.map((s) => s.id));
+    return [...ALL_SUBJECTS, ...custom.filter((s) => !baseIds.has(s.id))];
   });
   const [chapters, setChapters] = useState<ChapterInfo[]>(() => {
-    const saved = getStorageItem<ChapterInfo[]>('chapters', ALL_CHAPTERS);
-    if (!saved || saved.length < ALL_CHAPTERS.length) return ALL_CHAPTERS;
-    return saved;
+    const custom = getStorageItem<ChapterInfo[]>('custom_chapters', []);
+    const baseIds = new Set(ALL_CHAPTERS.map((ch) => ch.id));
+    return [...ALL_CHAPTERS, ...custom.filter((ch) => !baseIds.has(ch.id))];
   });
   const [lessons, setLessons] = useState<Lesson[]>(() => {
-    const saved = getStorageItem<Lesson[]>('lessons', INITIAL_LESSONS);
-    if (!saved || saved.length < INITIAL_LESSONS.length) return INITIAL_LESSONS;
-    return saved;
+    const custom = getStorageItem<Lesson[]>('custom_lessons', []);
+    const deletedIds = new Set(getStorageItem<string[]>('deleted_lesson_ids', []));
+    const base = INITIAL_LESSONS.filter((l) => !deletedIds.has(l.id));
+    const baseIds = new Set(base.map((l) => l.id));
+    return [...base, ...custom.filter((l) => !baseIds.has(l.id))];
   });
   const [quizzes, setQuizzes] = useState<Quiz[]>(() => {
-    const saved = getStorageItem<Quiz[]>('quizzes', INITIAL_QUIZZES);
-    if (!saved || saved.length < INITIAL_QUIZZES.length) return INITIAL_QUIZZES;
-    return saved;
+    const custom = getStorageItem<Quiz[]>('custom_quizzes', []);
+    const deletedIds = new Set(getStorageItem<string[]>('deleted_quiz_ids', []));
+    const base = INITIAL_QUIZZES.filter((q) => !deletedIds.has(q.id));
+    const baseIds = new Set(base.map((q) => q.id));
+    return [...base, ...custom.filter((q) => !baseIds.has(q.id))];
   });
   const [posts, setPosts] = useState<Post[]>(() => getStorageItem('posts', INITIAL_POSTS));
   const [comments, setComments] = useState<Comment[]>(() => getStorageItem('comments', INITIAL_COMMENTS));
@@ -438,13 +473,76 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(STORAGE_PREFIX + 'theme', theme);
   }, [theme]);
 
-  // Sync primary collections to local storage
+  // Sync primary collections to local storage efficiently
   useEffect(() => setStorageItem('users', users), [users]);
-  useEffect(() => setStorageItem('classes', classes), [classes]);
-  useEffect(() => setStorageItem('subjects', subjects), [subjects]);
-  useEffect(() => setStorageItem('chapters', chapters), [chapters]);
-  useEffect(() => setStorageItem('lessons', lessons), [lessons]);
-  useEffect(() => setStorageItem('quizzes', quizzes), [quizzes]);
+
+  useEffect(() => {
+    const baseIds = new Set(ALL_CLASSES.map((c) => c.id));
+    const custom = classes.filter((c) => !baseIds.has(c.id));
+    if (custom.length > 0) {
+      setStorageItem('custom_classes', custom);
+    } else {
+      localStorage.removeItem(STORAGE_PREFIX + 'custom_classes');
+    }
+  }, [classes]);
+
+  useEffect(() => {
+    const baseIds = new Set(ALL_SUBJECTS.map((s) => s.id));
+    const custom = subjects.filter((s) => !baseIds.has(s.id));
+    if (custom.length > 0) {
+      setStorageItem('custom_subjects', custom);
+    } else {
+      localStorage.removeItem(STORAGE_PREFIX + 'custom_subjects');
+    }
+  }, [subjects]);
+
+  useEffect(() => {
+    const baseIds = new Set(ALL_CHAPTERS.map((ch) => ch.id));
+    const custom = chapters.filter((ch) => !baseIds.has(ch.id));
+    if (custom.length > 0) {
+      setStorageItem('custom_chapters', custom);
+    } else {
+      localStorage.removeItem(STORAGE_PREFIX + 'custom_chapters');
+    }
+    localStorage.removeItem(STORAGE_PREFIX + 'chapters');
+  }, [chapters]);
+
+  useEffect(() => {
+    const baseIds = new Set(INITIAL_LESSONS.map((l) => l.id));
+    const custom = lessons.filter((l) => !baseIds.has(l.id));
+    if (custom.length > 0) {
+      setStorageItem('custom_lessons', custom);
+    } else {
+      localStorage.removeItem(STORAGE_PREFIX + 'custom_lessons');
+    }
+    const currentIds = new Set(lessons.map((l) => l.id));
+    const deleted = INITIAL_LESSONS.filter((l) => !currentIds.has(l.id)).map((l) => l.id);
+    if (deleted.length > 0) {
+      setStorageItem('deleted_lesson_ids', deleted);
+    } else {
+      localStorage.removeItem(STORAGE_PREFIX + 'deleted_lesson_ids');
+    }
+    localStorage.removeItem(STORAGE_PREFIX + 'lessons');
+  }, [lessons]);
+
+  useEffect(() => {
+    const baseIds = new Set(INITIAL_QUIZZES.map((q) => q.id));
+    const custom = quizzes.filter((q) => !baseIds.has(q.id));
+    if (custom.length > 0) {
+      setStorageItem('custom_quizzes', custom);
+    } else {
+      localStorage.removeItem(STORAGE_PREFIX + 'custom_quizzes');
+    }
+    const currentIds = new Set(quizzes.map((q) => q.id));
+    const deleted = INITIAL_QUIZZES.filter((q) => !currentIds.has(q.id)).map((q) => q.id);
+    if (deleted.length > 0) {
+      setStorageItem('deleted_quiz_ids', deleted);
+    } else {
+      localStorage.removeItem(STORAGE_PREFIX + 'deleted_quiz_ids');
+    }
+    localStorage.removeItem(STORAGE_PREFIX + 'quizzes');
+  }, [quizzes]);
+
   useEffect(() => setStorageItem('posts', posts), [posts]);
   useEffect(() => setStorageItem('comments', comments), [comments]);
   useEffect(() => setStorageItem('reports', reports), [reports]);
@@ -1153,9 +1251,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Getters
   const getClassById = (id: ClassId) => classes.find((c) => c.id === id);
-  const getSubjectById = (id: SubjectId) => subjects.find((s) => s.id === id);
-  const getChapterById = (id: string) => chapters.find((ch) => ch.id === id);
-  const getLessonById = (id: string) => lessons.find((l) => l.id === id);
+  const getSubjectById = (id: SubjectId) =>
+    subjects.find((s) => s.id === id) ||
+    SSC_SUBJECTS.find((s) => s.id === id) ||
+    HSC_SUBJECTS.find((s) => s.id === id);
+  const getChapterById = (id: string) =>
+    chapters.find((ch) => ch.id === id) ||
+    SSC_CHAPTERS.find((ch) => ch.id === id) ||
+    HSC_CHAPTERS.find((ch) => ch.id === id);
+  const getLessonById = (id: string) =>
+    lessons.find((l) => l.id === id) ||
+    SSC_LESSONS.find((l) => l.id === id) ||
+    HSC_LESSONS.find((l) => l.id === id);
   
   const getQuizById = (id: string): Quiz | undefined => {
     if (activeCustomQuiz && activeCustomQuiz.id === id) {
@@ -1163,6 +1270,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     const found = quizzes.find((q) => q.id === id);
     if (found) return found;
+
+    // Check SSC and HSC Quizzes
+    const sscQuiz = SSC_QUIZZES.find((q) => q.id === id);
+    if (sscQuiz) return sscQuiz;
+
+    const hscQuiz = HSC_QUIZZES.find((q) => q.id === id);
+    if (hscQuiz) return hscQuiz;
 
     // Dynamic generation if ID matches pattern
     if (id.startsWith('quiz-full-')) {
@@ -1181,10 +1295,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const getCommentsByPostId = (postId: string) => comments.filter((c) => c.postId === postId);
 
   const resetAllData = () => {
-    localStorage.clear();
-    setClasses(INITIAL_CLASSES);
-    setSubjects(INITIAL_SUBJECTS);
-    setChapters(INITIAL_CHAPTERS);
+    try {
+      localStorage.clear();
+    } catch {
+      // Ignore
+    }
+    setClasses(ALL_CLASSES);
+    setSubjects(ALL_SUBJECTS);
+    setChapters(ALL_CHAPTERS);
     setLessons(INITIAL_LESSONS);
     setQuizzes(INITIAL_QUIZZES);
     setPosts(INITIAL_POSTS);
@@ -1194,7 +1312,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNotifications(INITIAL_NOTIFICATIONS);
     setReports(INITIAL_REPORTS);
     setSettings(INITIAL_SETTINGS);
-    alert('ডেটা সফলভাবে প্রাথমিক অবস্থায় রিসেট করা হয়েছে!');
   };
 
   return (

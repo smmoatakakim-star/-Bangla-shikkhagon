@@ -45,9 +45,24 @@ export interface FirestoreErrorInfo {
   };
 }
 
-export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): never {
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): void {
+  const message = error instanceof Error ? error.message : String(error);
+  const code = (error as any)?.code || '';
+
+  // Gracefully handle offline or network unavailable status in Firestore
+  if (
+    code === 'unavailable' ||
+    message.includes('unavailable') ||
+    message.includes('client is offline') ||
+    message.includes('offline mode') ||
+    message.includes('Failed to get document because the client is offline')
+  ) {
+    console.warn(`Firestore operating in offline mode for ${operationType} on ${path || 'database'}`);
+    return;
+  }
+
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: message,
     authInfo: {
       userId: auth.currentUser?.uid,
       email: auth.currentUser?.email,
@@ -66,15 +81,17 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   throw new Error(JSON.stringify(errInfo));
 }
 
-// Test connection on boot as mandated by the skill
+// Optional helper to check connection on demand without forcing unhandled failure on boot
 export async function testConnection(): Promise<void> {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
   } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error('Please check your Firebase configuration: client is offline.');
+    if (
+      error instanceof Error &&
+      (error.message.includes('the client is offline') || (error as any)?.code === 'unavailable')
+    ) {
+      console.warn('Firebase notice: client is operating in offline mode.');
     }
   }
 }
 
-testConnection();
