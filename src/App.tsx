@@ -5,11 +5,13 @@
 
 import React, { useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
+import { VoiceGuideProvider } from './context/VoiceGuideContext';
 import { Navbar } from './components/Navbar';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { AnnouncementBanner } from './components/AnnouncementBanner';
 import { Footer } from './components/Footer';
 import { GitHubConnectionModal } from './components/GitHubConnectionModal';
+import { VoiceGuideWidget } from './components/VoiceGuideWidget';
 
 // Pages
 import { HomePage } from './pages/HomePage';
@@ -137,6 +139,9 @@ const AppContent: React.FC = () => {
         onClose={() => setIsGitHubModalOpen(false)}
       />
 
+      {/* Interactive Bangla AI Voice Guide Widget */}
+      <VoiceGuideWidget />
+
       {/* Mobile-only Bottom Navigation Bar */}
       <MobileBottomNav />
     </div>
@@ -146,7 +151,9 @@ const AppContent: React.FC = () => {
 export default function App() {
   return (
     <AppProvider>
-      <AppContent />
+      <VoiceGuideProvider>
+        <AppContent />
+      </VoiceGuideProvider>
     </AppProvider>
   );
 }

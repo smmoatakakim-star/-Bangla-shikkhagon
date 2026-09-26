@@ -24,8 +24,11 @@ import {
   Languages,
   ShieldCheck,
   GraduationCap,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useVoiceGuide } from '../context/VoiceGuideContext';
 import { PageType } from '../types';
 
 export const Navbar: React.FC = () => {
@@ -42,6 +45,8 @@ export const Navbar: React.FC = () => {
     switchUser,
     logout,
   } = useApp();
+
+  const { isVoiceEnabled, toggleVoice, isSpeaking } = useVoiceGuide();
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -228,6 +233,26 @@ export const Navbar: React.FC = () => {
                 )}
               </div>
             )}
+
+            {/* Voice Guide Toggle Button */}
+            <button
+              id="header-voice-toggle-btn"
+              onClick={toggleVoice}
+              title={isVoiceEnabled ? 'ভয়েস গাইড বন্ধ করুন (ভয়েস চালু আছে)' : 'ভয়েস গাইড চালু করুন (ভয়েস বন্ধ আছে)'}
+              className={`p-2 rounded-lg transition flex items-center justify-center ${
+                isVoiceEnabled
+                  ? isSpeaking
+                    ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 ring-1 ring-emerald-500 animate-pulse'
+                    : 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/40'
+                  : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              {isVoiceEnabled ? (
+                <Volume2 className="w-5 h-5 text-emerald-600" />
+              ) : (
+                <VolumeX className="w-5 h-5 text-slate-400" />
+              )}
+            </button>
 
             {/* Dark/Light Theme Toggle */}
             <button
@@ -491,6 +516,39 @@ export const Navbar: React.FC = () => {
               <span className="font-semibold">অ্যাডমিন ড্যাশবোর্ড</span>
             </button>
           )}
+
+          {/* Mobile Voice Guide Item */}
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+            <button
+              onClick={() => {
+                toggleVoice();
+              }}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition ${
+                isVoiceEnabled
+                  ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                {isVoiceEnabled ? (
+                  <Volume2 className="w-5 h-5 text-emerald-600" />
+                ) : (
+                  <VolumeX className="w-5 h-5 text-slate-400" />
+                )}
+                <span>বাংলা ভয়েস গাইড</span>
+              </div>
+              <span
+                className={`text-xs px-2.5 py-0.5 rounded-full font-bold ${
+                  isVoiceEnabled
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                }`}
+              >
+                {isVoiceEnabled ? '🔊 চালু' : '🔇 বন্ধ'}
+              </span>
+            </button>
+          </div>
+
           <button
             onClick={() => handleNavClick('about')}
             className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"

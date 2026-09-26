@@ -31,8 +31,11 @@ import {
   Users,
   Share2,
   X,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useVoiceGuide } from '../context/VoiceGuideContext';
 import { ClassId, SubjectId, QuizQuestion } from '../types';
 import { allNctbMcqList } from '../data/mcq';
 import {
@@ -65,6 +68,8 @@ export const HomePage: React.FC = () => {
     isQuestionBookmarked,
     recordWrongQuestion,
   } = useApp();
+
+  const { isSpeaking, replay, isVoiceEnabled } = useVoiceGuide();
 
   const [searchInput, setSearchInput] = useState('');
   const [showEidModal, setShowEidModal] = useState(false);
@@ -257,9 +262,21 @@ export const HomePage: React.FC = () => {
         <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-60 h-60 bg-teal-400/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative max-w-2xl mx-auto text-center space-y-4">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] sm:text-xs font-semibold text-emerald-100 border border-white/20">
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            <span>৬ষ্ঠ থেকে ১২শ শ্রেণির পূর্ণাঙ্গ ডিজিটাল স্কুল প্ল্যাটফর্ম</span>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11px] sm:text-xs font-semibold text-emerald-100 border border-white/20">
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span>৬ষ্ঠ থেকে ১২শ শ্রেণির পূর্ণাঙ্গ ডিজিটাল স্কুল প্ল্যাটফর্ম</span>
+            </div>
+
+            <button
+              id="hero-voice-guide-btn"
+              onClick={replay}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/40 hover:bg-emerald-950/60 backdrop-blur-md text-[11px] sm:text-xs font-bold text-amber-300 border border-amber-300/30 transition shadow-xs cursor-pointer"
+              title="বাংলা ভয়েস গাইড শুনুন"
+            >
+              <Volume2 className={`w-3.5 h-3.5 ${isSpeaking ? 'animate-bounce text-amber-200' : ''}`} />
+              <span>{isSpeaking ? 'ভয়েস চলছে...' : '🔊 ভয়েস গাইড শুনুন'}</span>
+            </button>
           </div>
 
           <h1 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight">
