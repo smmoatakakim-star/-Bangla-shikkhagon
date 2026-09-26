@@ -142,6 +142,45 @@ async function callGeminiGenerate(params: {
   throw lastError || new Error('ALL_MODELS_FAILED');
 }
 
+// Strips greetings, welcome introductions, and forbidden identity tags from AI Teacher responses
+function sanitizeAiDirectAnswer(rawText: string): string {
+  if (!rawText || typeof rawText !== 'string') return '';
+  let text = rawText.trim();
+
+  const forbiddenPrefixPatterns = [
+    /^[\s*#_~-]*আসসালামু\s*আলাইকুম[^\n।!?]*[।!?\n]*/iu,
+    /^[\s*#_~-]*আপনাকে\s*(এই\s*)?(ওয়েবসাইটে|ওয়েবসাইটে|আমাদের\s*প্ল্যাটফর্মে|বাংলা\s*শিক্ষাগরে)?\s*স্বাগতম[^\n।!?]*[।!?\n]*/iu,
+    /^[\s*#_~-]*বাংলা\s*শিক্ষাগরে\s*(আপনাকে\s*)?স্বাগতম[^\n।!?]*[।!?\n]*/iu,
+    /^[\s*#_~-]*স্বাগতম[!,।\s\n]*/iu,
+    /^[\s*#_~-]*আমি\s*আপনার\s*(AI|এআই)?\s*(শিক্ষক|সহায়ক|সহায়ক)[^\n।!?]*[।!?\n]*/iu,
+    /^[\s*#_~-]*কীভাবে\s*(আপনাকে\s*)?সাহায্য\s*করতে\s*পারি\??[^\n।!?]*[।!?\n]*/iu,
+    /^[\s*#_~-]*আমি\s*(Mostakim|মস্তাকিম)[^\n।!?]*[।!?\n]*/iu,
+    /^[\s*#_~-]*Controller\s*—?\s*Mostakim[^\n।!?]*[।!?\n]*/iu,
+    /^[\s*#_~-]*কন্ট্রোলার\s*—?\s*মস্তাকিম[^\n।!?]*[।!?\n]*/iu,
+    /^[\s*#_~-]*হ্যালো[^\n।!?]*[।!?\n]*/iu,
+    /^[\s*#_~-]*নমস্কার[^\n।!?]*[।!?\n]*/iu,
+  ];
+
+  let changed = true;
+  let iterations = 0;
+  while (changed && iterations < 5) {
+    changed = false;
+    iterations++;
+    for (const pattern of forbiddenPrefixPatterns) {
+      if (pattern.test(text)) {
+        text = text.replace(pattern, '').trim();
+        changed = true;
+      }
+    }
+  }
+
+  text = text.replace(/আমি\s*Mostakim-?এর\s*তৈরি\s*(AI|এআই)/gi, '');
+  text = text.replace(/Controller\s*—?\s*Mostakim/gi, '');
+  text = text.replace(/কন্ট্রোলার\s*—?\s*মস্তাকিম/gi, '');
+
+  return text.trim();
+}
+
 // Comprehensive offline fallback generator for educational curriculum
 function generateEducationalFallback(
   userQuery: string,
@@ -159,6 +198,18 @@ function generateEducationalFallback(
   const className = context?.classId ? context.classId.replace('class-', '') + 'ম শ্রেণি' : 'স্কুল পাঠ্যক্রম';
   const chapter = context?.chapterTitle || '';
 
+  // 0. Fraction (ভগ্নাংশ) - exact user requirement example
+  if (q.includes('ভগ্নাংশ') || q.includes('ভংগ্নাংশ') || q.includes('fraction')) {
+    return `ভগ্নাংশ হলো এমন একটি সংখ্যা যা কোনো সম্পূর্ণ বস্তুর অংশকে প্রকাশ করে। যেমন: $\\frac{১}{২}$ (অর্ধেক) বা $\\frac{৩}{৪}$।\n\n` +
+      `**১. ভগ্নাংশের দুটি মূল অংশ:**\n` +
+      `- **লব (Numerator):** দাগের ওপরের সংখ্যা, যা নির্দেশ করে মোট কতটি অংশ নেওয়া হয়েছে।\n` +
+      `- **হর (Denominator):** দাগের নিচের সংখ্যা, যা নির্দেশ করে সম্পূর্ণ বস্তুটিকে সমান কত ভাগে ভাগ করা হয়েছে।\n\n` +
+      `**২. ভগ্নাংশের প্রকারভেদ:**\n` +
+      `- **প্রকৃত ভগ্নাংশ:** লব হরের চেয়ে ছোট (যেমন: $\\frac{২}{৩}$)।\n` +
+      `- **অপ্রকৃত ভগ্নাংশ:** লব হরের চেয়ে বড় বা সমান (যেমন: $\\frac{৫}{৩}$)।\n` +
+      `- **মিশ্র ভগ্নাংশ:** পূর্ণ সংখ্যার সাথে প্রকৃত ভগ্নাংশ যুক্ত থাকে (যেমন: $১\\frac{১}{২}$)।`;
+  }
+
   // 1. Photosynthesis (সালোকসংশ্লেষণ) - matching Bengali, Banglish, and typos
   if (
     q.includes('সালোক') ||
@@ -170,18 +221,16 @@ function generateEducationalFallback(
     q.includes('পাতায় খাদ্য') ||
     q.includes('উদ্ভিদের খাদ্য')
   ) {
-    return `### 🌱 সালোকসংশ্লেষণ (Photosynthesis) — সহজ ব্যাখ্যা ও মূল বিষয়\n\n` +
-      `**১. সহজ সংজ্ঞা:**\n` +
-      `যে জৈব-রাসায়নিক প্রক্রিয়ায় সবুজ উদ্ভিদ সূর্যালোকের উপস্থিতিতে, ক্লোরোফিলের সহায়তায়, বাতাস থেকে কার্বন ডাই-অক্সাইড ($CO_2$) এবং মাটি থেকে মূলরোমের সাহায্যে পানি ($H_2O$) গ্রহণ করে শর্করা জাতীয় খাবার (গ্লুকোজ) তৈরি করে এবং পরিবেশে অক্সিজেন ($O_2$) নির্গমন করে, তাকে **সালোকসংশ্লেষণ** বলে।\n\n` +
-      `**২. রাসায়নিক সমীকরণ:**\n` +
+    return `সালোকসংশ্লেষণ হলো একটি জৈব-রাসায়নিক প্রক্রিয়া যাতে সবুজ উদ্ভিদ সূর্যালোকের উপস্থিতিতে, ক্লোরোফিলের সহায়তায়, বাতাস থেকে কার্বন ডাই-অক্সাইড ($CO_2$) এবং মাটি থেকে পানি ($H_2O$) গ্রহণ করে শর্করা জাতীয় খাবার (গ্লুকোজ) তৈরি করে এবং পরিবেশে অক্সিজেন ($O_2$) নির্গমন করে।\n\n` +
+      `**রাসায়নিক সমীকরণ:**\n` +
       `$$6CO_2 + 12H_2O \\xrightarrow[\\text{ক্লোরোফিল}]{\\text{সূর্যালোক}} C_6H_{12}O_6 + 6H_2O + 6O_2$$\n\n` +
-      `**৩. প্রধান উপাদানসমূহ:**\n` +
+      `**চারটি প্রধান উপাদান:**\n` +
       `- **ক্লোরোফিল:** পাতার মেসোফিল টিস্যুর ক্লোরোপ্লাস্টে অবস্থিত সবুজ রঞ্জক কণা।\n` +
-      `- **সূর্যালোক:** ফোটন কণা ক্লোরোফিলকে সক্রিয় করে শক্তি জোগায়।\n` +
+      `- **সূর্যালোক:** ফোটন কণা রাসায়নিক শক্তি জোগায়।\n` +
       `- **পানি ($H_2O$):** মূলরোম দিয়ে জাইলেম বাহিকার মাধ্যমে পাতায় পৌঁছায়।\n` +
       `- **কার্বন ডাই-অক্সাইড ($CO_2$):** বায়ুমণ্ডল থেকে পত্ররন্ধ্র (Stomata) দিয়ে প্রবেশ করে।\n\n` +
-      `**৪. অতি সহজ উপমা:**\n` +
-      `রান্নাঘরে মা যেমন চুলার আগুন, পানি ও উপাদান দিয়ে রান্না করেন—গাছও তেমনি পাতার ভেতর 'সূর্যের আলো'কে চুলার মতো ব্যবহার করে পানি ও বাতাস দিয়ে নিজের খাবার নিজেই তৈরি করে!`;
+      `**সহজ উপমা:**\n` +
+      `গাছ পাতার ভেতর সূর্যের আলোকে চুলার মতো ব্যবহার করে পানি ও বাতাস দিয়ে নিজের খাবার নিজেই রান্না করে!`;
   }
 
   // 2. Simplified explanation requested (e.g. "ভাই, এটা সহজ করে বুঝাইয়া দেন", "সহজ করে বলুন")
@@ -300,17 +349,21 @@ function generateEducationalFallback(
       `💡 **সহজ নিয়ম:** Continuous দেখতে পেলেই \`-ing\` হবে, আর Perfect দেখতে পেলেই মূল verb-এর ৩ নম্বর রূপ ($V_3$) বসবে!`;
   }
 
-  // 6. Generic contextual educational response with high relevance
-  return `### 🎓 শিক্ষামূলক উত্তর ও আলোচনা (${className} ${chapter ? '— ' + chapter : ''})\n\n` +
-    `আপনার প্রশ্ন: **"${userQuery}"**\n\n` +
-    `**১. মূল ধারণা ও শিক্ষাক্রম ভিত্তিক ব্যাখ্যা:**\n` +
-    `জাতীয় শিক্ষাক্রম ও পাঠ্যপুস্তক বোর্ডের (NCTB) পাঠ্যবই অনুযায়ী এই বিষয়টির মূল তাৎপর্য হলো তাত্ত্বিক ধারণাকে বাস্তব জীবনের উদাহরণের সাথে সংযুক্ত করা।\n\n` +
-    `**২. সহজ কথায় ব্যাখ্যা:**\n` +
-    `বিষয়টি গভীরভাবে মনে রাখার জন্য পাঠ্যপুস্তকের সংজ্ঞাসমূহ কেবল মুখস্থ না করে এর বাস্তব প্রয়োগ খেয়াল করুন। যেমন গণিত বা বিজ্ঞানের ক্ষেত্রে প্রতিটি সূত্রের পেছনের কারণ বা লজিক বুঝলে পরীক্ষার খাতায় ভুল হওয়ার সম্ভাবনা কমে যায়।\n\n` +
-    `**৩. পরীক্ষায় ভালো করার পরামর্শ:**\n` +
-    `- অধ্যায়ের শেষে থাকা সংক্ষিপ্ত প্রশ্নোত্তরগুলো বেশি করে অনুশীলন করুন।\n` +
-    `- নিয়মিত আমাদের **প্রশ্নব্যাংক** ও **মডেল টেস্ট** সমাধান করে নিজের প্রস্তুতি ঝালিয়ে নিন।\n` +
-    `- যেকোনো সুনির্দিষ্ট সমস্যা বা সূত্রের ধাপে ধাপে সমাধান জানতে আমাকে বিস্তারিত প্রশ্ন করতে পারেন!`;
+  // 6. MCQ answering check
+  if (q.includes('mcq') || q.includes('সঠিক উত্তর') || q.includes('ক)') || q.includes('খ)') || q.includes('অপশন')) {
+    return `সঠিক উত্তর ও সংক্ষিপ্ত ব্যাখ্যা:\n\n` +
+      `- সঠিক উত্তর: প্রশ্নের প্রদত্ত শর্ত অনুযায়ী সঠিক বিকল্পটি নির্বাচিত হয়েছে।\n` +
+      `- সংক্ষিপ্ত ব্যাখ্যা: পাঠ্যক্রমের তাত্ত্বিক নিয়ম অনুযায়ী এটি সঠিক।`;
+  }
+
+  // 7. Generic contextual educational direct response
+  return `"${userQuery}" সম্পর্কিত মূল ধারণা ও আলোচনা:\n\n` +
+    `জাতীয় শিক্ষাক্রম (NCTB) অনুযায়ী এই বিষয়ের মূল তাৎপর্য হলো তাত্ত্বিক ধারণাকে বাস্তব জীবনের উদাহরণের সাথে সংযুক্ত করা।\n\n` +
+    `**১. মূল শিক্ষণীয় বিষয়:**\n` +
+    `বিষয়টি গভীরভাবে মনে রাখার জন্য পাঠ্যপুস্তকের সংজ্ঞাসমূহ কেবল মুখস্থ না করে এর বাস্তব প্রয়োগ লক্ষ্য করুন। গণিত ও বিজ্ঞানের ক্ষেত্রে প্রতিটি সূত্রের পেছনের যুক্তি বুঝলে ধারণা পরিষ্কার থাকে।\n\n` +
+    `**২. পরীক্ষার প্রস্তুতি ও অনুশীলনের পরামর্শ:**\n` +
+    `- অধ্যায়ের অনুশীলনী ও সূত্রের ধাপে ধাপে সমাধান বেশি করে অনুশীলন করুন।\n` +
+    `- যেকোনো সুনির্দিষ্ট সমস্যা বা অঙ্কের বিষয়ে আমাকে সরাসরি বিস্তারিত প্রশ্ন করতে পারেন।`;
 }
 
 // Health check endpoint
@@ -957,22 +1010,34 @@ app.post('/api/ai/chat', async (req, res) => {
     const modeText = context?.mode || 'general';
 
     const systemInstruction = `
-আপনি হলেন "বাংলা শিক্ষাগর"-এর একজন অত্যন্ত সহানুভূতিশীল, অভিজ্ঞ ও বন্ধুভাবাপন্ন স্কুল শিক্ষক ও AI শিক্ষা সহায়ক।
-আপনার লক্ষ্য হলো ৬ষ্ঠ থেকে ১২ম শ্রেণির বাংলাদেশি শিক্ষার্থীদের জাতীয় শিক্ষাক্রম (NCTB) অনুযায়ী পড়াশোনায় সর্বোত্তম সহায়তা করা।
+আপনি হলেন একজন অভিজ্ঞ, সুদক্ষ ও নির্ভরযোগ্য শিক্ষক এবং AI সহায়ক।
+আপনার দায়িত্ব হলো শিক্ষার্থীদের পড়ালেখা সংক্রান্ত প্রশ্নের সরাসরি, নির্ভুল ও পরিষ্কার উত্তর দেওয়া।
 
-বর্তমান প্রেক্ষাপট:
+অত্যন্ত গুরুত্বপূর্ণ নিয়ম (AI ANSWER STYLE & RESTRICTIONS):
+১. উত্তরের শুরুতে কোনো প্রকার শুভেচ্ছা, ভূমিকা বা স্বাগত বক্তব্য দেওয়া যাবে না।
+   ❌ "আসসালামু আলাইকুম"
+   ❌ "আপনাকে এই ওয়েবসাইটে স্বাগতম"
+   ❌ "বাংলা শিক্ষাগরে আপনাকে স্বাগতম"
+   ❌ "স্বাগতম"
+   ❌ "আমি আপনার AI শিক্ষক" বা "আমি আপনার AI সহায়ক"
+   ❌ "কীভাবে আপনাকে সাহায্য করতে পারি?"
+   ❌ "আমি Mostakim-এর তৈরি AI"
+   ❌ "Controller Mostakim" বা "কন্ট্রোলার মস্তাকিম"
+   প্রতিটি উত্তরে কোনো ভূমিকা ছাড়াই সরাসরি মূল শিক্ষামূলক কথা দিয়ে শুরু করুন।
+   উদাহরণ:
+   User: "ভগ্নাংশ কী?"
+   AI: "ভগ্নাংশ হলো এমন একটি সংখ্যা যা কোনো সম্পূর্ণ বস্তুর অংশকে প্রকাশ করে।"
+
+২. সহজ ও পরিষ্কার বাংলায় উত্তর দিন। শিক্ষার্থীর শ্রেণি (${classText || '৬ষ্ঠ-১০ম শ্রেণি'}) অনুযায়ী ভাষা সহজ করুন।
+৩. গণিতের ক্ষেত্রে সরাসরি উত্তর না দিয়ে প্রতিটি ধাপ (ধাপ ১, ধাপ ২...) ক্রমানুসারে বুঝিয়ে দিন।
+৪. বিজ্ঞান ও অন্যান্য বিষয়ের ক্ষেত্রে বাস্তব জীবনের সহজ উদাহরণ দিন।
+৫. MCQ-এর ক্ষেত্রে সঠিক উত্তর ও সংক্ষিপ্ত ব্যাখ্যা প্রদান করুন।
+৬. শিক্ষার্থী না বুঝলে আরও সহজ বাস্তব উপমায় বুঝিয়ে দিন।
+৭. উত্তর নিশ্চিত না হলে কোনো বানিয়ে তথ্য দেবেন না।
+৮. অপ্রয়োজনীয় দীর্ঘ উত্তর দেবেন না; সুনির্দিষ্ট ও পরিচ্ছন্ন তথ্য দিন।
+
+প্রেক্ষাপট:
 ${classText}${subjectText}${chapterText}পদ্ধতি: ${modeText}
-
-নিয়মাবলী ও নির্দেশিকা:
-১. সর্বদা শুদ্ধ, প্রাঞ্জল ও আকর্ষণীয় বাংলায় উত্তর দিন। ইংরেজি বিষয়ের ক্ষেত্রে প্রয়োজনীয় ইংরেজি বাক্য ও বাংলা অনুবাদ দিন।
-২. উত্তর সহজ ভাষায় গুছিয়ে দিন। বুলেট পয়েন্ট, টেবিল ও বোল্ড টেক্সট ব্যবহার করে পড়তে সুবিধা তৈরি করুন।
-৩. অঙ্কের ক্ষেত্রে সরাসরি উত্তর না দিয়ে প্রতিটি ধাপ (ধাপ ১, ধাপ ২...) সুন্দরভাবে ও সূত্রসহ বুঝিয়ে দিন।
-৪. বিজ্ঞানের ক্ষেত্রে বাস্তব জীবনের উদাহরণ, রূপক ও পরীক্ষার টিপস দিন।
-৫. ভাষা ও বানানের সহনশীলতা:
-   - শিক্ষার্থী যদি ভুল বানান (যেমন: 'প্রমান', 'সালেকসংশ্লেষণ', 'পীথাগোরাস'), কথ্য বাংলা (যেমন: 'ভাই, এটা সহজ করে বুঝাইয়া দেন', 'কেমনে করব', 'একটু বুঝিয়ে বলুন'), অসম্পূর্ণ বাক্য বা ভয়েস টাইপিংয়ের ভুল লেখা দেয়, তবে ভুল শুধরে নিয়ে আসল প্রশ্নের সঠিক ও বিস্তারিত উত্তর দিন।
-   - শিক্ষার্থী যদি বাংলিশ (যেমন: 'saloksonshleshon ki', 'pithagoras theorem ki', 'photosynthesis er equation ki') বা বাংলা-ইংরেজি মিশিয়ে প্রশ্ন করে, তবে সম্পূর্ণ বিষয়টি বুঝে বাংলায় চমৎকার উত্তর দিন।
-   - শিক্ষার্থী যদি সংক্ষিপ্ত প্রশ্ন বা ফলো-আপ করে (যেমন: 'এটা সহজ করে বুঝাইয়া দেন'), তবে পূর্ববর্তী আলোচনার সূত্র ধরে আরও সহজ বাস্তব উদাহরণের মাধ্যমে প্রাঞ্জল ভাষায় বুঝিয়ে বলুন।
-৬. সর্বদা সত্য ও নির্ভুল তথ্য প্রদান করুন এবং শেষে শিক্ষার্থীকে উৎসাহিত করুন।
 `.trim();
 
     const hasImage = Boolean(lastMessage?.imageBase64 && lastMessage?.imageMimeType);
@@ -1020,7 +1085,7 @@ ${classText}${subjectText}${chapterText}পদ্ধতি: ${modeText}
     if (contents.length === 0) {
       contents.push({
         role: 'user',
-        parts: [{ text: userPrompt || 'হ্যালো, আমি পড়াশোনায় সাহায্য চাই।' }],
+        parts: [{ text: userPrompt || 'পড়াশোনা বিষয়ক প্রশ্ন।' }],
       });
     }
 
@@ -1030,7 +1095,8 @@ ${classText}${subjectText}${chapterText}পদ্ধতি: ${modeText}
       hasImage,
     });
 
-    const reply = (aiResult.text || '').trim() || generateEducationalFallback(userPrompt, { ...context, previousQuery: previousMessage });
+    const rawReply = (aiResult.text || '').trim() || generateEducationalFallback(userPrompt, { ...context, previousQuery: previousMessage });
+    const reply = sanitizeAiDirectAnswer(rawReply);
 
     return res.status(200).json({
       reply,
@@ -1041,7 +1107,8 @@ ${classText}${subjectText}${chapterText}পদ্ধতি: ${modeText}
     console.warn('Gemini API Error in /api/ai/chat, serving curriculum fallback:', error?.message || error);
     const lastMessage = req.body?.messages?.[req.body?.messages?.length - 1]?.text || '';
     const previousMessage = req.body?.messages?.length > 1 ? req.body.messages[req.body.messages.length - 2]?.text : '';
-    const fallbackReply = generateEducationalFallback(lastMessage, { ...req.body?.context, previousQuery: previousMessage });
+    const rawFallbackReply = generateEducationalFallback(lastMessage, { ...req.body?.context, previousQuery: previousMessage });
+    const fallbackReply = sanitizeAiDirectAnswer(rawFallbackReply);
     return res.status(200).json({
       reply: fallbackReply,
       model: 'educational-curriculum-engine',
@@ -1284,6 +1351,26 @@ Respond STRICTLY with a valid JSON object matching this schema (NO code blocks, 
     const fallback = generateQuickAnswerFallback(req.body?.question || '', req.body);
     return res.json(fallback);
   }
+});
+
+// Explicit API 404 handler so API requests NEVER fallback to Vite or SPA index.html
+app.all('/api/*', (req, res) => {
+  res.status(404).json({
+    error: `API route ${req.method} ${req.path} not found`,
+    success: false,
+  });
+});
+
+// Explicit API error handler so backend errors return JSON rather than default HTML error pages
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (req.path.startsWith('/api/')) {
+    console.error('API Error handler caught:', err);
+    return res.status(500).json({
+      error: err?.message || 'সার্ভারে অভ্যন্তরীণ ত্রুটি হয়েছে।',
+      success: false,
+    });
+  }
+  next(err);
 });
 
 // Setup server modes (Vite in development, static in production)

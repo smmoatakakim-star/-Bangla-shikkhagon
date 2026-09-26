@@ -25,15 +25,20 @@ import {
   Image as ImageIcon,
   X as XIcon,
   Paperclip,
+  Volume2,
+  Square,
+  VolumeX,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ClassId, SubjectId, AIChatMessage, AIChatMode, AIGeneratedQuizItem } from '../types';
 import { ALL_CLASSES, ALL_SUBJECTS, ALL_CHAPTERS } from '../data/curriculumData';
+import { isRawHtmlDocument, sanitizeAiDirectAnswer, cleanTextForSpeech } from '../utils/banglaUtils';
 import { AIQuickAnswerTab } from '../components/ai/AIQuickAnswerTab';
 import { AINotesTab } from '../components/ai/AINotesTab';
 import { AIMcqGeneratorTab } from '../components/ai/AIMcqGeneratorTab';
 
 const SUGGESTED_PROMPTS = [
+  { text: 'ভগ্নাংশ কী?', classId: 'class-6', subjectId: 'math' },
   { text: '🌱 সালোকসংশ্লেষণ সহজে বুঝিয়ে দাও', classId: 'class-6', subjectId: 'science' },
   { text: '📐 পিথাগোরাসের উপপাদ্যটি কী ও কীভাবে প্রমাণ করতে হয়?', classId: 'class-8', subjectId: 'math' },
   { text: '🍎 নিউটনের ৩য় সূত্র বাস্তব উদাহরণ দিয়ে ব্যাখ্যা করো', classId: 'class-9', subjectId: 'physics' },
@@ -63,6 +68,9 @@ export const AIChatPage: React.FC = () => {
   const [likedMap, setLikedMap] = useState<Record<string, boolean>>({});
   const [savedNotes, setSavedNotes] = useState<Record<string, boolean>>({});
 
+  // Audio Speech Synthesis for AI Teacher response
+  const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
+
   // Interactive Quiz state inside chat
   const [mcqAnswers, setMcqAnswers] = useState<Record<string, number>>({});
 
@@ -75,11 +83,115 @@ export const AIChatPage: React.FC = () => {
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Stop voice synthesis
+  const handleStopVoice = () => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setSpeakingMsgId(null);
+  };
+
+  // Speak AI message on demand
+  const handleListen = (msgId: string, rawText: string) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      alert('আপনার ব্রাউজার ভয়েস প্লেব্যাক সাপোর্ট করে না।');
+      return;
+    }
+
+    if (speakingMsgId === msgId) {
+      handleStopVoice();
+      return;
+    }
+
+    handleStopVoice();
+
+    const spokenText = cleanTextForSpeech(rawText);
+    if (!spokenText) return;
+
+    const synth = window.speechSynthesis;
+    if (synth.paused) {
+      synth.resume();
+    }
+
+    const utterance = new SpeechSynthesisUtterance(spokenText);
+    utterance.lang = 'bn-BD';
+    utterance.rate = 0.95;
+    utterance.pitch = 1.0;
+
+    const voices = synth.getVoices();
+    const bnVoice = voices.find((v) => {
+      const lang = (v.lang || '').toLowerCase();
+      const name = (v.name || '').toLowerCase();
+      return (
+        lang.startsWith('bn') ||
+        lang.includes('bd') ||
+        lang.includes('bengali') ||
+        lang.includes('bangla') ||
+        name.includes('bengali') ||
+        name.includes('bangla')
+      );
+    });
+    if (bnVoice) {
+      utterance.voice = bnVoice;
+    }
+
+    utterance.onstart = () => {
+      setSpeakingMsgId(msgId);
+    };
+
+    utterance.onend = () => {
+      setSpeakingMsgId((current) => (current === msgId ? null : current));
+    };
+
+    utterance.onerror = (e) => {
+      if (e.error !== 'interrupted' && e.error !== 'canceled') {
+        console.warn('Speech error:', e);
+      }
+      setSpeakingMsgId((current) => (current === msgId ? null : current));
+    };
+
+    try {
+      synth.speak(utterance);
+      setSpeakingMsgId(msgId);
+    } catch (err) {
+      console.warn('Speech synthesis call failed:', err);
+      setSpeakingMsgId(null);
+    }
+  };
+
+  // Cleanup speech on unmount
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
   // Messages list with persistent local cache
   const [messages, setMessages] = useState<AIChatMessage[]>(() => {
     try {
       const saved = localStorage.getItem('bsh_ai_chat_history');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          // Immediately purge and reject any messages that contain raw HTML document/tag text
+          // and sanitize out any forbidden greetings
+          const cleaned = parsed
+            .filter((m) => m && typeof m.text === 'string' && !isRawHtmlDocument(m.text))
+            .map((m) =>
+              m.sender === 'assistant'
+                ? { ...m, text: sanitizeAiDirectAnswer(m.text) || m.text }
+                : m
+            );
+          if (cleaned.length > 0) {
+            try {
+              localStorage.setItem('bsh_ai_chat_history', JSON.stringify(cleaned));
+            } catch {}
+            return cleaned;
+          }
+        }
+      }
     } catch (e) {
       console.error(e);
     }
@@ -87,9 +199,10 @@ export const AIChatPage: React.FC = () => {
       {
         id: 'msg-welcome',
         sender: 'assistant',
-        text: `**আসসালামু আলাইকুম! আমি আপনার "AI শিক্ষা সহায়ক"।** 🎓\n\n৬ষ্ঠ থেকে ১০ম শ্রেণির যেকোনো বিষয়, অধ্যায়, গণিতের জটিল অঙ্ক বা বিজ্ঞান নিয়ে আমাকে প্রশ্ন করতে পারেন।\n\n💡 *নিচের কুইক প্রম্পটগুলোতে ক্লিক করতে পারেন অথবা সরাসরি আপনার প্রশ্নটি লিখে পাঠান!*`,
+        text: `**AI শিক্ষক — শিক্ষণ সহায়ক** 🎓\n\n৬ষ্ঠ থেকে ১০ম শ্রেণির যেকোনো বিষয়, অধ্যায়, গণিতের জটিল অঙ্ক বা বিজ্ঞান নিয়ে সরাসরি প্রশ্ন করতে পারেন।\n\n💡 *নিচের কুইক প্রম্পটগুলোতে চাপ দিন অথবা আপনার প্রশ্নটি নিচে লিখে পাঠান।*`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         suggestedFollowups: [
+          'ভগ্নাংশ কী?',
           'সালোকসংশ্লেষণ সহজে বুঝিয়ে দাও',
           'পিথাগোরাসের উপপাদ্যটি কী?',
           'Class 8 বিজ্ঞানের গুরুত্বপূর্ণ নোট দাও',
@@ -208,24 +321,33 @@ export const AIChatPage: React.FC = () => {
       let aiReply = '';
       try {
         const textResponse = await res.text();
-        try {
-          const data = JSON.parse(textResponse);
-          aiReply =
-            data.reply ||
-            data.text ||
-            data.content ||
-            data.answer ||
-            data.message ||
-            '';
-        } catch {
-          // If response was direct text rather than JSON
-          if (textResponse && textResponse.trim() && !textResponse.includes('<!DOCTYPE')) {
+        // If response is raw HTML (e.g. <!DOCTYPE, <html, <head, <meta, etc.), strictly reject it
+        if (!isRawHtmlDocument(textResponse)) {
+          try {
+            const data = JSON.parse(textResponse);
+            aiReply =
+              data.reply ||
+              data.text ||
+              data.content ||
+              data.answer ||
+              data.message ||
+              '';
+          } catch {
+            // If response was direct text rather than JSON
             aiReply = textResponse.trim();
           }
         }
       } catch (readErr) {
         console.warn('Response parsing warning:', readErr);
       }
+
+      // Final check: Guarantee aiReply never contains raw HTML documents
+      if (isRawHtmlDocument(aiReply)) {
+        aiReply = '';
+      }
+
+      // Strip any automated greetings, intros, or forbidden identity tags
+      aiReply = sanitizeAiDirectAnswer(aiReply);
 
       if (!aiReply) {
         if (!res.ok) {
@@ -585,7 +707,7 @@ export const AIChatPage: React.FC = () => {
           {/* Active Context Bar */}
           <div
             id="ai-chat-context-bar"
-            className="px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-600 dark:text-slate-400"
+            className="px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 gap-2 flex-wrap"
           >
             <div className="flex items-center gap-2 truncate">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -603,6 +725,28 @@ export const AIChatPage: React.FC = () => {
             </div>
 
             <div className="shrink-0 flex items-center gap-2">
+              {speakingMsgId && (
+                <button
+                  id="ai-chat-global-stop-voice-btn"
+                  onClick={handleStopVoice}
+                  className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold flex items-center gap-1.5 transition text-xs shadow-xs animate-pulse"
+                  title="ভয়েস বন্ধ করুন"
+                >
+                  <Square className="w-3 h-3 fill-current" />
+                  <span>⏹ Stop Voice</span>
+                </button>
+              )}
+
+              <button
+                id="ai-chat-clear-history-top-btn"
+                onClick={handleClearChat}
+                className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-600 dark:text-slate-300 hover:text-rose-600 flex items-center gap-1 transition text-xs"
+                title="চ্যাট হিস্ট্রি পরিষ্কার করুন"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Clear Chat</span>
+              </button>
+
               <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[11px] font-semibold">
                 {activeMode === 'general'
                   ? 'সাধারণ মোড'
@@ -701,7 +845,9 @@ export const AIChatPage: React.FC = () => {
 
                           {/* Message Content formatted with Markdown-like rendering */}
                           <div className="whitespace-pre-wrap font-sans space-y-2 select-text">
-                            {msg.text}
+                            {isRawHtmlDocument(msg.text)
+                              ? 'দুঃখিত, উত্তরটি লোড হতে সমস্যা হয়েছিল। অনুগ্রহ করে প্রশ্নটি পুনরায় করুন।'
+                              : msg.text}
                           </div>
                         </>
                       )}
@@ -709,11 +855,34 @@ export const AIChatPage: React.FC = () => {
 
                     {/* Action Toolbar for AI message (only if not an error) */}
                     {!isUser && !msg.isError && (
-                      <div className="flex items-center gap-3 px-1 text-xs text-slate-500 dark:text-slate-400">
+                      <div className="flex items-center gap-2 sm:gap-3 px-1 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
+                        {/* 🔊 Listen / ⏹ Stop Voice button */}
+                        {speakingMsgId === msg.id ? (
+                          <button
+                            id={`stop-voice-btn-${msg.id}`}
+                            onClick={handleStopVoice}
+                            className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 flex items-center gap-1.5 transition font-bold text-xs animate-pulse shadow-xs"
+                            title="ভয়েস বন্ধ করুন"
+                          >
+                            <Square className="w-3.5 h-3.5 fill-current" />
+                            <span>⏹ Stop Voice</span>
+                          </button>
+                        ) : (
+                          <button
+                            id={`listen-btn-${msg.id}`}
+                            onClick={() => handleListen(msg.id, msg.text)}
+                            className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 hover:dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80 flex items-center gap-1.5 transition font-semibold text-xs shadow-xs"
+                            title="উত্তরের বাংলা অডিও শুনুন"
+                          >
+                            <Volume2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                            <span>🔊 Listen</span>
+                          </button>
+                        )}
+
                         <button
                           id={`copy-btn-${msg.id}`}
                           onClick={() => handleCopy(msg.id, msg.text)}
-                          className="hover:text-emerald-600 flex items-center gap-1 transition"
+                          className="hover:text-emerald-600 flex items-center gap-1 transition px-1.5 py-1 rounded-md"
                           title="উত্তর কপি করুন"
                         >
                           {copiedId === msg.id ? (
@@ -732,7 +901,7 @@ export const AIChatPage: React.FC = () => {
                         <button
                           id={`bookmark-note-btn-${msg.id}`}
                           onClick={() => toggleSaveNote(msg.id)}
-                          className={`flex items-center gap-1 transition ${
+                          className={`flex items-center gap-1 transition px-1.5 py-1 rounded-md ${
                             savedNotes[msg.id]
                               ? 'text-emerald-600 font-semibold'
                               : 'hover:text-slate-700 dark:hover:text-slate-200'
@@ -746,7 +915,7 @@ export const AIChatPage: React.FC = () => {
                         <button
                           id={`like-btn-${msg.id}`}
                           onClick={() => toggleLike(msg.id)}
-                          className={`flex items-center gap-1 transition ${
+                          className={`flex items-center gap-1 transition px-1.5 py-1 rounded-md ${
                             likedMap[msg.id]
                               ? 'text-emerald-600 font-semibold'
                               : 'hover:text-slate-700 dark:hover:text-slate-200'
@@ -808,9 +977,20 @@ export const AIChatPage: React.FC = () => {
             id="ai-quick-prompts-tray"
             className="p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800"
           >
-            <div className="flex items-center gap-2 mb-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>জনপ্রিয় প্রশ্নসমূহ (ক্লিক করুন):</span>
+            <div className="flex items-center justify-between gap-2 mb-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>জনপ্রিয় প্রশ্নসমূহ (ক্লিক করুন):</span>
+              </div>
+              <button
+                id="ai-chat-clear-history-bottom-btn"
+                onClick={handleClearChat}
+                className="text-xs text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 flex items-center gap-1 transition cursor-pointer px-2 py-0.5 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                title="চ্যাট হিস্ট্রি পরিষ্কার করুন"
+              >
+                <Trash2 className="w-3 h-3" />
+                <span>Clear Chat</span>
+              </button>
             </div>
             <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
               {SUGGESTED_PROMPTS.map((p, idx) => (

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { ClassId, SubjectId } from '../../types';
 import { ALL_CLASSES, ALL_SUBJECTS, ALL_CHAPTERS } from '../../data/curriculumData';
+import { isRawHtmlDocument } from '../../utils/banglaUtils';
 
 export const AINotesTab: React.FC = () => {
   const [selectedClass, setSelectedClass] = useState<ClassId>('class-8');
@@ -51,7 +52,7 @@ export const AINotesTab: React.FC = () => {
       if (!res.ok) throw new Error('Failed to generate notes');
       const data = await res.json();
       const notesContent = data?.notes || data?.reply || data?.content;
-      if (notesContent && typeof notesContent === 'string' && notesContent.trim()) {
+      if (notesContent && typeof notesContent === 'string' && notesContent.trim() && !isRawHtmlDocument(notesContent)) {
         setGeneratedNotes(notesContent.trim());
       } else {
         throw new Error('No notes content');

@@ -187,12 +187,12 @@ export const VoiceGuideWidget: React.FC = () => {
               {isVoiceEnabled ? (
                 <>
                   <Volume2 className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>ভয়েস On</span>
+                  <span>🔊 Voice On</span>
                 </>
               ) : (
                 <>
                   <VolumeX className="w-3.5 h-3.5 text-rose-600" />
-                  <span>ভয়েস Off</span>
+                  <span>🔇 Voice Off</span>
                 </>
               )}
             </button>
@@ -229,7 +229,7 @@ export const VoiceGuideWidget: React.FC = () => {
             </div>
 
             <span className="text-xs font-bold">
-              {isVoiceEnabled ? (isSpeaking ? 'ভয়েস চলছে...' : 'ভয়েস গাইড') : 'ভয়েস বন্ধ'}
+              {isVoiceEnabled ? (isSpeaking ? 'ভয়েস চলছে...' : '🔊 Voice On') : '🔇 Voice Off'}
             </span>
 
             {isVoiceEnabled && (
@@ -246,7 +246,7 @@ export const VoiceGuideWidget: React.FC = () => {
                 ? 'bg-white dark:bg-slate-800 text-emerald-600 border-slate-200 dark:border-slate-700'
                 : 'bg-white dark:bg-slate-800 text-rose-500 border-slate-200 dark:border-slate-700'
             }`}
-            title={isVoiceEnabled ? 'ভয়েস মিউট করুন' : 'ভয়েস আনমিউট করুন'}
+            title={isVoiceEnabled ? 'ভয়েস বন্ধ করুন (Voice Off)' : 'ভয়েস চালু করুন (Voice On)'}
           >
             {isVoiceEnabled ? (
               <Volume2 className="w-4 h-4" />
