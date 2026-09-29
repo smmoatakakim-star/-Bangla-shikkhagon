@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "gen-lang-client-0959983549"
+    "default": "gen-lang-client-0028107936",
+    "production": "gen-lang-client-0028107936",
+    "dev": "gen-lang-client-0959983549"
   }
 }

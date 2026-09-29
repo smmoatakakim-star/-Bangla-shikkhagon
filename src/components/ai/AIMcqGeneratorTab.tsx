@@ -16,6 +16,7 @@ import {
 import { ClassId, SubjectId, AIGeneratedQuizItem } from '../../types';
 import { ALL_CLASSES, ALL_SUBJECTS, ALL_CHAPTERS } from '../../data/curriculumData';
 import { useApp } from '../../context/AppContext';
+import { generateAiMcqs } from '../../services/aiService';
 
 export const AIMcqGeneratorTab: React.FC = () => {
   const { navigate } = useApp();
@@ -48,23 +49,16 @@ export const AIMcqGeneratorTab: React.FC = () => {
     setShowResult(false);
 
     try {
-      const res = await fetch('/api/ai/generate-mcqs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          classId: selectedClass,
-          subjectId: selectedSubject,
-          chapterTitle,
-          count: questionCount,
-          difficulty,
-        }),
+      const generated = await generateAiMcqs({
+        classId: selectedClass,
+        subjectId: selectedSubject,
+        chapterTitle,
+        count: questionCount,
+        difficulty,
       });
 
-      if (!res.ok) throw new Error('Failed to generate MCQs');
-      const data = await res.json();
-      const parsedMcqs = data.mcqs || data.questions;
-      if (Array.isArray(parsedMcqs) && parsedMcqs.length > 0) {
-        setMcqs(parsedMcqs);
+      if (Array.isArray(generated) && generated.length > 0) {
+        setMcqs(generated);
       } else {
         throw new Error('No MCQs returned');
       }

@@ -15,6 +15,7 @@ import {
 import { ClassId, SubjectId } from '../../types';
 import { ALL_CLASSES, ALL_SUBJECTS, ALL_CHAPTERS } from '../../data/curriculumData';
 import { isRawHtmlDocument } from '../../utils/banglaUtils';
+import { generateAiNotes } from '../../services/aiService';
 
 export const AINotesTab: React.FC = () => {
   const [selectedClass, setSelectedClass] = useState<ClassId>('class-8');
@@ -38,20 +39,13 @@ export const AINotesTab: React.FC = () => {
 
     setLoading(true);
     try {
-      const res = await fetch('/api/ai/generate-notes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          classId: selectedClass,
-          subjectId: selectedSubject,
-          chapterTitle: customTopic.trim() ? `${chapterTitle} — ${customTopic.trim()}` : chapterTitle,
-          style: noteStyle,
-        }),
+      const notesContent = await generateAiNotes({
+        classId: selectedClass,
+        subjectId: selectedSubject,
+        chapterTitle: customTopic.trim() ? `${chapterTitle} — ${customTopic.trim()}` : chapterTitle,
+        style: noteStyle,
       });
 
-      if (!res.ok) throw new Error('Failed to generate notes');
-      const data = await res.json();
-      const notesContent = data?.notes || data?.reply || data?.content;
       if (notesContent && typeof notesContent === 'string' && notesContent.trim() && !isRawHtmlDocument(notesContent)) {
         setGeneratedNotes(notesContent.trim());
       } else {

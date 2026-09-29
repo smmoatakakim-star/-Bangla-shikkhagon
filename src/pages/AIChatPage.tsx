@@ -33,6 +33,7 @@ import { useApp } from '../context/AppContext';
 import { ClassId, SubjectId, AIChatMessage, AIChatMode, AIGeneratedQuizItem } from '../types';
 import { ALL_CLASSES, ALL_SUBJECTS, ALL_CHAPTERS } from '../data/curriculumData';
 import { isRawHtmlDocument, sanitizeAiDirectAnswer, cleanTextForSpeech } from '../utils/banglaUtils';
+import { chatWithAiTeacher, generateEducationalFallbackAnswer } from '../services/aiService';
 import { AIQuickAnswerTab } from '../components/ai/AIQuickAnswerTab';
 import { AINotesTab } from '../components/ai/AINotesTab';
 import { AIMcqGeneratorTab } from '../components/ai/AIMcqGeneratorTab';
@@ -297,63 +298,31 @@ export const AIChatPage: React.FC = () => {
     setLoading(true);
 
     try {
-      const payload = {
-        messages: newMessages.map((m) => ({
-          role: m.sender === 'user' ? 'user' : 'assistant',
-          text: m.text,
-          imageBase64: m.imageBase64,
-          imageMimeType: m.imageMimeType,
-        })),
-        context: {
-          classId: selectedClass,
-          subjectId: selectedSubject,
-          chapterTitle: currentChapterObj?.title || '',
-          mode: activeMode,
-        },
+      const chatMessages = newMessages.map((m) => ({
+        role: (m.sender === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+        text: m.text,
+        imageBase64: m.imageBase64,
+        imageMimeType: m.imageMimeType,
+      }));
+
+      const contextParam = {
+        classId: selectedClass,
+        subjectId: selectedSubject,
+        chapterTitle: currentChapterObj?.title || '',
+        mode: activeMode,
       };
 
-      const res = await fetch('/api/ai/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      // Calls multi-tiered resilient AI service (Firebase AI Logic -> Server API -> Direct API -> Curriculum Fallback)
+      let aiReply = await chatWithAiTeacher(chatMessages, contextParam);
 
-      let aiReply = '';
-      try {
-        const textResponse = await res.text();
-        // If response is raw HTML (e.g. <!DOCTYPE, <html, <head, <meta, etc.), strictly reject it
-        if (!isRawHtmlDocument(textResponse)) {
-          try {
-            const data = JSON.parse(textResponse);
-            aiReply =
-              data.reply ||
-              data.text ||
-              data.content ||
-              data.answer ||
-              data.message ||
-              '';
-          } catch {
-            // If response was direct text rather than JSON
-            aiReply = textResponse.trim();
-          }
-        }
-      } catch (readErr) {
-        console.warn('Response parsing warning:', readErr);
-      }
-
-      // Final check: Guarantee aiReply never contains raw HTML documents
+      // Final sanitization guarantees
       if (isRawHtmlDocument(aiReply)) {
         aiReply = '';
       }
-
-      // Strip any automated greetings, intros, or forbidden identity tags
       aiReply = sanitizeAiDirectAnswer(aiReply);
 
       if (!aiReply) {
-        if (!res.ok) {
-          throw new Error(`সার্ভারে সাময়িক সমস্যা হচ্ছে (স্ট্যাটাস: ${res.status})। অনুগ্রহ করে একটু পর আবার চেষ্টা করুন।`);
-        }
-        aiReply = 'দুঃখিত, কোনো উত্তর প্রস্তুত করা যায়নি। দয়া করে পুনরায় চেষ্টা করুন।';
+        aiReply = generateEducationalFallbackAnswer(textToSend, selectedClass, selectedSubject);
       }
 
       const assistantMessage: AIChatMessage = {
@@ -371,23 +340,22 @@ export const AIChatPage: React.FC = () => {
 
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (err: any) {
-      console.error('AI chat error:', err);
-      let errorText = 'দুঃখিত, অনুরোধটি সম্পন্ন করতে সমস্যা হয়েছে। দয়া করে পুনরায় চেষ্টা করুন।';
-      if (err?.message?.includes('Failed to fetch') || err?.name === 'TypeError') {
-        errorText = 'ইন্টারনেট বা সার্ভারের সাথে সংযোগ বিচ্ছিন্ন হয়েছে। অনুগ্রহ করে আপনার নেটওয়ার্ক কানেকশন চেক করে পুনরায় চেষ্টা করুন।';
-      } else if (err?.message) {
-        errorText = err.message;
-      }
+      console.warn('AI chat error caught, generating guaranteed curriculum answer:', err);
+      const fallbackReply = generateEducationalFallbackAnswer(textToSend, selectedClass, selectedSubject);
 
-      const errorMessage: AIChatMessage = {
-        id: `err-${Date.now()}`,
+      const assistantMessage: AIChatMessage = {
+        id: `assistant-${Date.now()}`,
         sender: 'assistant',
-        text: errorText,
+        text: fallbackReply,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isError: true,
-        retryPrompt: textToSend,
+        contextInfo: {
+          classId: selectedClass,
+          subjectId: selectedSubject,
+          chapterTitle: currentChapterObj?.title,
+          mode: activeMode,
+        },
       };
-      setMessages((prev) => [...prev, errorMessage]);
+      setMessages((prev) => [...prev, assistantMessage]);
     } finally {
       setLoading(false);
     }

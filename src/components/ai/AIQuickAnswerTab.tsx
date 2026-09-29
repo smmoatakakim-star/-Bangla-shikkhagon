@@ -17,6 +17,7 @@ import {
 import { ClassId, SubjectId } from '../../types';
 import { ALL_CLASSES, ALL_SUBJECTS } from '../../data/curriculumData';
 import { isRawHtmlDocument } from '../../utils/banglaUtils';
+import { getAiQuickAnswer } from '../../services/aiService';
 
 interface QuickAnswerResult {
   question: string;
@@ -61,32 +62,26 @@ export const AIQuickAnswerTab: React.FC = () => {
     }
 
     try {
-      const res = await fetch('/api/ai/quick-answer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          question: isSimpler ? `${query} (অনুগ্রহ করে আরও সহজ ভাষায় ও ছোট শিশুর বোঝার মতো বাস্তব উপমা দিয়ে ব্যাখ্যা করো)` : query,
-          classId: selectedClass,
-          subjectId: selectedSubject,
-          length: lengthPref,
-        }),
+      const data = await getAiQuickAnswer({
+        question: isSimpler ? `${query} (অনুগ্রহ করে আরও সহজ ভাষায় ও বাস্তব উপমা দিয়ে ব্যাখ্যা করো)` : query,
+        classId: selectedClass,
+        subjectId: selectedSubject,
+        length: lengthPref,
       });
 
-      if (!res.ok) throw new Error('Network error');
-      const data = await res.json();
-      const rawDirect = data?.directAnswer || data?.answer || data?.reply || 'উত্তর প্রস্তুত করা হয়েছে।';
-      const rawExplanation = data?.simpleExplanation || data?.explanation || '';
+      const rawDirect = data.directAnswer || 'উত্তর প্রস্তুত করা হয়েছে।';
+      const rawExplanation = data.simpleExplanation || '';
       if (isRawHtmlDocument(rawDirect) || isRawHtmlDocument(rawExplanation)) {
         throw new Error('Received invalid HTML format');
       }
       setResult({
-        question: data?.question || query,
+        question: data.question || query,
         directAnswer: rawDirect,
         simpleExplanation: rawExplanation,
-        realLifeExample: data?.realLifeExample || data?.example || '',
-        keyPoints: Array.isArray(data?.keyPoints) && data.keyPoints.length > 0 ? data.keyPoints : ['বিষয়টির মূল পয়েন্ট মনে রাখুন', 'নিয়মিত অনুশীলন করুন'],
-        formulaOrRule: data?.formulaOrRule || '',
-        simplerAnalogy: data?.simplerAnalogy || '',
+        realLifeExample: data.realLifeExample || 'বাস্তব জীবনের উদাহরণের সাথে মিলিয়ে সহজে মনে রাখা যায়।',
+        keyPoints: Array.isArray(data.keyPoints) && data.keyPoints.length > 0 ? data.keyPoints : ['বিষয়টির মূল পয়েন্ট মনে রাখুন', 'নিয়মিত অনুশীলন করুন'],
+        formulaOrRule: data.formulaOrRule || '',
+        simplerAnalogy: data.simplerAnalogy || '',
       });
     } catch (err) {
       console.error(err);

@@ -67,16 +67,16 @@ npm run build
 
 ## 🔥 Firebase Deploy নির্দেশিকা
 
-এই প্রজেক্টে Firebase Hosting ও Firestore Rules কনফিগার করা আছে:
+এই প্রজেক্টটি Firebase Hosting-এ ডেপ্লয় করার সঠিক নিয়ম (অবশ্যই বিল্ড করার পর ডেপ্লয় করতে হবে):
 ```bash
-# Firebase CLI ইনস্টল না থাকলে:
-npm install -g firebase-tools
+# ১. ফ্রন্টএন্ড কোড বিল্ড করুন:
+npm run build
 
-# লগইন করুন:
-firebase login
+# ২. Firebase Hosting-এ ডেপ্লয় করুন:
+firebase deploy --only hosting
 
-# ডিপ্লয় করুন:
-firebase deploy
+# অথবা এক ক্লিকে বিল্ড ও ডেপ্লয়:
+npm run deploy
 ```
 
 ---
