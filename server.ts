@@ -109,12 +109,10 @@ async function callGeminiGenerate(params: {
     throw new Error('NO_API_KEY');
   }
 
-  // Model cascade:
-  // For images/vision: 'gemini-3.5-flash', 'gemini-3.8-flash'
-  // For text: 'gemini-3.1-flash-lite' is fast & highly available, then fallback to 'gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest'
+  // Model cascade: prioritize gemini-3.5-flash-lite which is confirmed active and fast
   const modelCandidates = params.hasImage
-    ? ['gemini-3.5-flash', 'gemini-3.8-flash']
-    : ['gemini-3.1-flash-lite', 'gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest'];
+    ? ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.8-flash']
+    : ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-flash-latest'];
 
   let lastError: any = null;
   for (const model of modelCandidates) {
@@ -128,7 +126,7 @@ async function callGeminiGenerate(params: {
             ...(params.config || {}),
           },
         }),
-        30000
+        25000
       );
       if (response && response.text) {
         return { text: response.text, model };
@@ -136,6 +134,36 @@ async function callGeminiGenerate(params: {
     } catch (err: any) {
       console.warn(`[AI Engine] Model ${model} encountered issue, trying fallback:`, err?.status || err?.message || err);
       lastError = err;
+    }
+  }
+
+  // Direct REST API fallback with gemini-3.5-flash-lite
+  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+  if (apiKey) {
+    try {
+      const restRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: params.contents,
+            systemInstruction: params.systemInstruction
+              ? { parts: [{ text: params.systemInstruction }] }
+              : undefined,
+          }),
+          signal: AbortSignal.timeout(25000),
+        }
+      );
+      if (restRes.ok) {
+        const data = (await restRes.json()) as any;
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
+          return { text, model: 'gemini-3.5-flash-lite-rest' };
+        }
+      }
+    } catch (restErr: any) {
+      console.warn('[AI Engine] Direct REST fallback failed:', restErr?.message || restErr);
     }
   }
 
