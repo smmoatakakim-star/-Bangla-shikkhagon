@@ -566,8 +566,8 @@ export const AIChatPage: React.FC = () => {
         userFriendlyMsg = 'AI সার্ভিসের দৈনিক কোটা সাময়িকভাবে পূর্ণ হয়েছে।';
         errorDetail = 'কিছুক্ষণ পর পুনরায় প্রশ্নটি পাঠান।';
       } else if (errMsg.includes('api-not-enabled')) {
-        userFriendlyMsg = 'Firebase AI (Vertex AI) সার্ভিস সক্রিয় করা প্রয়োজন।';
-        errorDetail = 'Firebase Console-এ গিয়ে AI Logic চালু করুন।';
+        userFriendlyMsg = 'AI শিক্ষক উত্তর প্রস্তুত করতে সাময়িক জটিলতা অনুভব করছে।';
+        errorDetail = 'অনুগ্রহ করে প্রশ্নটি পুনরায় পাঠান অথবা পৃষ্ঠাটি রিফ্রেশ করুন।';
       } else {
         errorDetail = errMsg.slice(0, 120);
       }

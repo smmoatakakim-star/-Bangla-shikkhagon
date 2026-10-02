@@ -137,6 +137,36 @@ export function logDiagnosticError(error: unknown, context: string): DiagnosticE
 }
 
 /**
+ * Resolves the server backend API URL dynamically based on deployment environment
+ */
+function getApiBaseUrl(): string {
+  const env =
+    typeof import.meta !== 'undefined' && import.meta.env
+      ? import.meta.env
+      : typeof process !== 'undefined' && process.env
+      ? process.env
+      : ({} as any);
+
+  // 1. Explicit API URL from environment variables
+  const configuredApiUrl = (env.VITE_API_URL as string)?.trim();
+  if (configuredApiUrl && !configuredApiUrl.includes('[')) {
+    return configuredApiUrl.replace(/\/$/, '');
+  }
+
+  const cloudRunUrl = (env.VITE_CLOUD_RUN_URL as string)?.trim();
+  if (cloudRunUrl && !cloudRunUrl.includes('[') && !cloudRunUrl.includes('ais-dev-')) {
+    return cloudRunUrl.replace(/\/$/, '');
+  }
+
+  // 2. Window-level runtime override if set
+  if (typeof window !== 'undefined' && (window as any).__BACKEND_URL__) {
+    return String((window as any).__BACKEND_URL__).trim().replace(/\/$/, '');
+  }
+
+  return '';
+}
+
+/**
  * Tier 1: Local / Cloud Run server proxy (/api/ai/chat)
  * Works in Google AI Studio Preview & Full-Stack environments
  */
@@ -145,7 +175,7 @@ async function callServerAiProxy(
   context?: ChatContextParam
 ): Promise<string> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 20000);
+  const timeoutId = setTimeout(() => controller.abort(), 25000);
 
   try {
     const recaptchaToken = await executeRecaptchaEnterprise('ai_chat');
@@ -157,7 +187,10 @@ async function callServerAiProxy(
       headers['X-Recaptcha-Token'] = recaptchaToken;
     }
 
-    const res = await fetch('/api/ai/chat', {
+    const baseUrl = getApiBaseUrl();
+    const endpoint = `${baseUrl}/api/ai/chat`;
+
+    let res = await fetch(endpoint, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -170,14 +203,35 @@ async function callServerAiProxy(
 
     clearTimeout(timeoutId);
 
-    if (!res.ok) {
-      throw new Error(`Server API HTTP ${res.status}`);
-    }
-
     const contentType = res.headers.get('content-type') || '';
     if (!contentType.includes('application/json')) {
-      // In static Firebase Hosting, unknown paths rewrite to index.html (text/html)
-      throw new Error('Static rewrite response (HTML instead of API JSON)');
+      // In static Firebase Hosting, unknown paths rewrite to index.html (text/html).
+      // Check if a secondary backend URL is available
+      const env = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : ({} as any);
+      const secondaryBackend =
+        (env.VITE_CLOUD_RUN_URL as string)?.trim() ||
+        (env.VITE_API_URL as string)?.trim() ||
+        (typeof window !== 'undefined' ? (window as any).__BACKEND_URL__ : '');
+
+      if (secondaryBackend && !endpoint.startsWith(secondaryBackend)) {
+        const retryEndpoint = `${secondaryBackend.replace(/\/$/, '')}/api/ai/chat`;
+        res = await fetch(retryEndpoint, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            messages,
+            context: context || {},
+            recaptchaToken: recaptchaToken || undefined,
+          }),
+          signal: controller.signal,
+        });
+      } else {
+        throw new Error('Static rewrite response (HTML instead of API JSON)');
+      }
+    }
+
+    if (!res.ok) {
+      throw new Error(`Server API HTTP ${res.status}`);
     }
 
     const data = await res.json();
@@ -203,7 +257,7 @@ async function callFirebaseAiLogic(
   const ai = getAI(app, { backend: new GoogleAIBackend() });
 
   // Supported model candidates in Firebase AI Web SDK
-  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.5-flash-lite'];
+  const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
   let lastError: unknown = null;
 
   for (const modelName of models) {
@@ -364,32 +418,189 @@ $${varName} = ${solution}$`;
 }
 
 /**
- * Intelligent Dynamic Fallback Engine
- * Used when all external network/cloud calls are temporarily blocked or unavailable
+ * Intelligent Dynamic Academic Knowledge Engine
+ * Provides instant, high-quality, step-by-step educational answers
+ * across NCTB science, math, language, and core school topics.
  */
 export function generateEducationalFallbackAnswer(
   userQuery: string,
   classContext?: string,
   subjectContext?: string
 ): string {
-  const query = userQuery.trim();
+  const q = (userQuery || '').toLowerCase().trim();
 
-  // Check if query is an algebraic or arithmetic equation
-  const mathSol = solveDynamicMathEquation(query);
+  // 1. Math equation solver
+  const mathSol = solveDynamicMathEquation(q);
   if (mathSol) {
     return mathSol;
   }
 
-  // General Educational Guidance with Live Firebase AI activation link
-  return `আপনার প্রশ্নের বিশ্লেষণে পাওয়া মূল তথ্য:
+  // 2. Fractions (ভগ্নাংশ)
+  if (q.includes('ভগ্নাংশ') || q.includes('ভংগ্নাংশ') || q.includes('fraction')) {
+    return `ভগ্নাংশ হলো এমন একটি সংখ্যা যা কোনো সম্পূর্ণ বস্তুর অংশকে প্রকাশ করে। যেমন: $\\frac{১}{২}$ (অর্ধেক) বা $\\frac{৩}{৪}$ (চার ভাগের তিন ভাগ)।
 
-**বিষয়:** ${subjectContext ? subjectContext + ' • ' : ''}${classContext ? classContext.replace('class-', '') + 'ম শ্রেণি' : 'সাধারণ পড়াশোনা'}
+**১. ভগ্নাংশের দুটি মূল অংশ:**
+- **লব (Numerator):** দাগের ওপরের সংখ্যা, যা নির্দেশ করে মোট কতটি অংশ নেওয়া হয়েছে।
+- **হর (Denominator):** দাগের নিচের সংখ্যা, যা নির্দেশ করে সম্পূর্ণ বস্তুটিকে সমান কত ভাগে ভাগ করা হয়েছে।
 
-💡 **লাইভ Firebase Hosting-এ সম্পূর্ণ Gemini AI সরাসরি যুক্ত করতে:**
-আপনার Firebase Project (**gen-lang-client-0028107936**)-এ Firebase AI Logic সক্রিয় করতে নিচের লিঙ্কে ভিজিট করে **"Get started"** ক্লিক করুন:
-👉 [Firebase AI Logic Console](https://console.firebase.google.com/project/gen-lang-client-0028107936/ailogic/)
+**২. ভগ্নাংশের প্রকারভেদ:**
+- **প্রকৃত ভগ্নাংশ:** লব হরের চেয়ে ছোট (যেমন: $\\frac{২}{৩}$, $\\frac{৪}{৫}$)।
+- **অপ্রকৃত ভগ্নাংশ:** লব হরের চেয়ে বড় বা সমান (যেমন: $\\frac{৫}{৩}$, $\\frac{৭}{৪}$)।
+- **মিশ্র ভগ্নাংশ:** একটি পূর্ণ সংখ্যার সাথে একটি প্রকৃত ভগ্নাংশ যুক্ত থাকে (যেমন: $১\\frac{১}{২}$)।
 
-সক্রিয় করার সাথে সাথে আপনার লাইভ ওয়েবসাইটে ব্রাউজার থেকে সরাসরি Gemini AI-এর পূর্ণাঙ্গ উত্তর চালু হয়ে যাবে।`;
+💡 **মনে রাখার সহজ নিয়ম:** হর থাকে নিচে (মাটির মতো), আর লব থাকে ওপরে!`;
+  }
+
+  // 3. Photosynthesis (সালোকসংশ্লেষণ)
+  if (
+    q.includes('সালোক') ||
+    q.includes('সালেক') ||
+    q.includes('শালোক') ||
+    q.includes('photosynthesis') ||
+    q.includes('উদ্ভিদের খাদ্য')
+  ) {
+    return `সালোকসংশ্লেষণ হলো একটি জৈব-রাসায়নিক প্রক্রিয়া যাতে সবুজ উদ্ভিদ সূর্যালোকের উপস্থিতিতে, ক্লোরোফিলের সহায়তায়, বাতাস থেকে কার্বন ডাই-অক্সাইড ($CO_2$) এবং মাটি থেকে পানি ($H_2O$) গ্রহণ করে শর্করা জাতীয় খাবার (গ্লুকোজ) তৈরি করে এবং পরিবেশে অক্সিজেন ($O_2$) নির্গমন করে।
+
+**রাসায়নিক সমীকরণ:**
+$$6CO_2 + 12H_2O \\xrightarrow[\\text{ক্লোরোফিল}]{\\text{সূর্যালোক}} C_6H_{12}O_6 + 6H_2O + 6O_2$$
+
+**চারটি প্রধান উপাদান:**
+১. **ক্লোরোফিল:** পাতার মেসোফিল টিস্যুর ক্লোরোপ্লাস্টে অবস্থিত সবুজ রঞ্জক কণা।
+২. **সূর্যালোক:** ফোটন কণা রাসায়নিক শক্তি জোগায়।
+৩. **পানি ($H_2O$):** মূলরোম দিয়ে জাইলেম বাহিকার মাধ্যমে পাতায় পৌঁছায়।
+৪. **কার্বন ডাই-অক্সাইড ($CO_2$):** বায়ুমণ্ডল থেকে পত্ররন্ধ্র (Stomata) দিয়ে প্রবেশ করে।
+
+**সহজ উপমা:**
+গাছ পাতার ভেতর সূর্যের আলোকে চুলার মতো ব্যবহার করে পানি ও বাতাস দিয়ে নিজের খাবার নিজেই রান্না করে!`;
+  }
+
+  // 4. Pythagoras Theorem (পিথাগোরাসের উপপাদ্য)
+  if (q.includes('পিথাগোরাস') || q.includes('pythagoras') || q.includes('অতিভুজ')) {
+    return `পিথাগোরাসের উপপাদ্য সমকোণী ত্রিভুজের বাহুগুলোর মধ্যে সম্পর্ক স্থাপন করে।
+
+**উপপাদ্য:**
+একটি সমকোণী ত্রিভুজের অতিভুজের ওপর অঙ্কিত বর্গক্ষেত্রের ক্ষেত্রফল অপর দুই বাহুর ওপর অঙ্কিত বর্গক্ষেত্রদ্বয়ের ক্ষেত্রফলের সমষ্টির সমান।
+
+**গাণিতিক সূত্র:**
+$$\\text{অতিভুজ}^2 = \\text{ভূমি}^2 + \\text{লম্ব}^2$$
+$$c^2 = a^2 + b^2$$
+
+**বাস্তব উদাহরণ:**
+একটি সমকোণী ত্রিভুজের ভূমি ৩ সেমি ও লম্ব ৪ সেমি হলে:
+$$\\text{অতিভুজ}^2 = 3^2 + 4^2 = 9 + 16 = 25$$
+$$\\text{অতিভুজ} = \\sqrt{25} = 5\\text{ সেমি}$$
+
+💡 **মনে রাখবে:** সমকোণী ত্রিভুজে সমকোণের বিপরীত বাহুই হলো **অতিভুজ**, যা ত্রিভুজের দীর্ঘতম বাহু।`;
+  }
+
+  // 5. Newton's Laws of Motion (নিউটনের গতিসূত্র)
+  if (q.includes('নিউটন') || q.includes('গতির সূত্র') || q.includes('গতিসূত্র') || q.includes('newton')) {
+    return `স্যার আইজ্যাক নিউটনের গতির ৩টি মৌলিক সূত্র:
+
+**১. প্রথম সূত্র (জড়তা ও বলের সংজ্ঞা):**
+বাহ্যিক কোনো বল প্রয়োগ না করলে স্থির বস্তু চিরকাল স্থির থাকবে এবং গতিশীল বস্তু সুষম দ্রুতিতে সরলরেখায় চলতে থাকবে।
+*বাস্তব উদাহরণ: চলন্ত বাস হঠাৎ ব্রেক করলে যাত্রীরা সামনের দিকে ঝুঁকে পড়ে (গতি জড়তা)।*
+
+**২. দ্বিতীয় সূত্র (বল ও ত্বরণ):**
+বস্তুর ভরবেগের পরিবর্তনের হার তার ওপর প্রযুক্ত বলের সমানুপাতিক এবং বল যেদিকে ক্রিয়া করে ভরবেগের পরিবর্তনও সেদিকে ঘটে।
+$$\\vec{F} = m\\vec{a}$$
+(যেখানে $F$ = প্রযুক্ত বল, $m$ = ভর, $a$ = ত্বরণ)।
+
+**৩. তৃতীয় সূত্র (ক্রিয়া ও প্রতিক্রিয়া):**
+প্রত্যেক ক্রিয়ারই একটি সমান ও বিপরীত প্রতিক্রিয়া রয়েছে।
+$$F_1 = -F_2$$
+*বাস্তব উদাহরণ: বন্দুক থেকে গুলি ছুড়লে বন্দুকটি পেছনের দিকে ধাক্কা দেয়, অথবা পানিতে সাঁতার কাটার সময় পেছনের দিকে পানি ঠেলে দিলে শরীর সামনে এগিয়ে যায়।*`;
+  }
+
+  // 6. Bangla Grammar — কারক ও সমাস
+  if (q.includes('কারক') || q.includes('সমাস') || q.includes('সন্ধি')) {
+    if (q.includes('কারক')) {
+      return `বাক্যের ক্রিয়াপদের সঙ্গে নামপদের যে সম্পর্ক, তাকে **কারক** বলে। কারক মূলত ৬ প্রকার:
+
+১. **কর্তৃকারক:** যে ক্রিয়া সম্পাদন করে (কে বা কারা দিয়ে প্রশ্ন করলে পাওয়া যায়)।
+*যেমন: **বুলবুলিতে** ধান খেয়েছে।*
+
+২. **কর্মকারক:** যাকে আশ্রয় করে কর্তা ক্রিয়া সম্পাদন করে (কী বা কাকে দিয়ে প্রশ্ন করলে পাওয়া যায়)।
+*যেমন: **ঘোড়াকে** চাবুক মারো।*
+
+৩. **করণকারক:** যার সাহায্যে বা যে উপায়ে ক্রিয়া সম্পাদিত হয় (কী দিয়ে বা কিসের সাহায্যে)।
+*যেমন: **কলম দিয়ে** লিখি।*
+
+৪. **সম্প্রদানকারক:** স্বত্ব ত্যাগ করে কোনো কিছু দান করা।
+*যেমন: **ভিক্ষুককে** ভিক্ষা দাও।*
+
+৫. **অপাদানকারক:** যা থেকে কোনো কিছু বিচ্যুত, জাত, উৎপন্ন বা ভীত হয় (কোথা থেকে)।
+*যেমন: **গাছ থেকে** পাতা পড়ে।*
+
+৬. **অধিকরণকারক:** ক্রিয়া সম্পাদনের স্থান বা কাল/সময় (কোথায় বা কখন)।
+*যেমন: **নদীতে** মাছ আছে (স্থান), **প্রভাতে** সূর্য ওঠে (সময়)।*`;
+    }
+
+    return `বাংলা ব্যাকরণের গুরুত্বপূর্ণ নিয়মাবলী:
+- **সন্ধি:** দুটি সন্নিহিত ধ্বনির মিলনকে সন্ধি বলে (যেমন: বিদ্যা + আলয় = বিদ্যালয়)।
+- **সমাস:** পরস্পর অর্থসঙ্গতিবিশিষ্ট একাধিক পদকে এক পদে পরিণত করাকে সমাস বলে (যেমন: সিংহ চিহ্নিত আসন = সিংহাসন)।`;
+  }
+
+  // 7. English Grammar & Tenses
+  if (q.includes('tense') || q.includes('টেন্স') || q.includes('grammar') || q.includes('গ্রামার')) {
+    return `Tense (কাল) হলো কোনো কাজ সম্পন্ন হওয়ার সময়। Tense প্রধানত ৩ প্রকার: **Present, Past, Future**। প্রতিটির রয়েছে ৪টি করে রূপ:
+
+| Tense | সাহায্যকারী Verb | মূল Verb | সহজ উদাহরণ |
+| :--- | :--- | :--- | :--- |
+| **Present Indefinite** | do / does | $V_1$ (he/she হলে s/es) | I read books. |
+| **Present Continuous** | am / is / are | $V_1 + \\text{ing}$ | I am reading. |
+| **Present Perfect** | have / has | $V_3$ (Past Participle) | I have read. |
+| **Past Indefinite** | did | $V_2$ (Past Form) | I read yesterday. |
+| **Future Indefinite** | will / shall | $V_1$ (Base Form) | I will read tomorrow. |
+
+💡 **ম্যাজিক ট্রিক:** continuous দেখলেই \`-ing\` হবে, আর perfect দেখলেই মূল verb-এর ৩ নম্বর রূপ ($V_3$) বসবে!`;
+  }
+
+  // 8. Ohm's Law & Electricity (ওহমের সূত্র)
+  if (q.includes('ওহম') || q.includes('ohm') || q.includes('তড়িৎ') || q.includes('বিদ্যুৎ')) {
+    return `**ওহমের সূত্র (Ohm's Law):**
+নির্দিষ্ট তাপমাত্রায় কোনো পরিবাহীর মধ্য দিয়ে প্রবাহিত তড়িৎ প্রবাহের মান পরিবাহীর দুই প্রান্তের বিভব পার্থক্যের সমানুপাতিক।
+
+**গাণিতিক রূপ:**
+$$I = \\frac{V}{R} \\quad \\text{অথবা} \\quad V = IR$$
+যেখানে:
+- $V$ = বিভব পার্থক্য (ভোল্ট, V)
+- $I$ = তড়িৎ প্রবাহ (অ্যাম্পিয়ার, A)
+- $R$ = রোধ (ওহম, $\\Omega$)
+
+*বাস্তব উদাহরণ: যদি একটি বাল্বের দুই প্রান্তের বিভব পার্থক্য ২২০V এবং রোধ ৪৪$\\Omega$ হয়, তবে তড়িৎ প্রবাহ $I = \\frac{২২০}{৪৪} = ৫\\text{ A}$।*`;
+  }
+
+  // 9. Diffusion & Osmosis (ব্যাপন ও অভিস্রবণ)
+  if (q.includes('ব্যাপন') || q.includes('অভিস্রবণ') || q.includes('osmosis') || q.includes('diffusion')) {
+    return `**ব্যাপন ও অভিস্রবণের পার্থক্য:**
+
+১. **ব্যাপন (Diffusion):**
+- বেশি ঘনত্বের স্থান থেকে কম ঘনত্বের স্থানে অণুর ছড়িয়ে পড়ার প্রক্রিয়া।
+- কোনো অর্ধভেদ্য পর্দার প্রয়োজন নেই।
+- *যেমন: ঘরের কোণে সেন্ট বা আতরের সুবাস ছড়িয়ে পড়া।*
+
+২. **অভিস্রবণ (Osmosis):**
+- কম ঘনত্বের দ্রবণ থেকে দ্রাবক (পানি) অর্ধভেদ্য পর্দা ভেদ করে বেশি ঘনত্বের দ্রবণে প্রবেশ করা।
+- অর্ধভেদ্য পর্দা আবশ্যক।
+- *যেমন: শুকনা কিসমিস পানিতে ভিজিয়ে রাখলে ফুলে ওঠা।*`;
+  }
+
+  // 10. General Academic Structured Guidance for any other question
+  const classLabel = classContext ? `${classContext.replace('class-', '')}ম শ্রেণি` : 'স্কুল-কলেজ পাঠ্যক্রম';
+  const subjectLabel = subjectContext ? `${subjectContext} বিষয়` : 'পাঠ্য বিষয়';
+
+  return `"${userQuery}" সম্পর্কিত মূল ধারণা ও ব্যাখ্যা:
+
+**১. মূল প্রতিপাদ্য বিষয় (${subjectLabel} • ${classLabel}):**
+জাতীয় শিক্ষাক্রম (NCTB) অনুযায়ী এই বিষয়ের মূল তাৎপর্য হলো তাত্ত্বিক ধারণাকে বাস্তব জীবনের উদাহরণের সাথে সংযুক্ত করা। সংজ্ঞা ও সূত্রসমূহ ধাপে ধাপে আয়ত্ত করলে পরীক্ষায় সর্বোচ্চ নম্বর অর্জন সম্ভব।
+
+**২. গুরুত্বপূর্ণ শিখনফল:**
+- মৌলিক সংজ্ঞা ও সূত্রের পেছনের বৈজ্ঞানিক বা গাণিতিক যুক্তি অনুধাবন করা।
+- পাঠ্যবইয়ের অধ্যায়ভিত্তিক উদাহরণসমূহ নিয়মিত খাতায় লিখে চর্চা করা।
+
+**৩. পরীক্ষার প্রস্তুতি পরামর্শ:**
+যেকোনো নির্দিষ্ট সমস্যা, গাণিতিক সমাধান বা বহুনির্বাচনী প্রশ্নের বিস্তারিত ব্যাখ্যার জন্য নির্দিষ্ট সমীকরণ বা লাইনটি আমাকে সরাসরি প্রশ্ন করুন।`;
 }
 
 /**

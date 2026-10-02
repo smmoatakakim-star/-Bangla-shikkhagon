@@ -18,6 +18,17 @@ const PORT = Number(process.env.PORT) || 3000;
 
 app.use(cookieParser());
 
+// Enable CORS for /api/* routes so Firebase Hosting static frontend can communicate with Cloud Run API
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Recaptcha-Token');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 // Ensure uploads folder exists
 const uploadsDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadsDir)) {
@@ -109,10 +120,10 @@ async function callGeminiGenerate(params: {
     throw new Error('NO_API_KEY');
   }
 
-  // Model cascade: prioritize gemini-3.5-flash-lite which is confirmed active and fast
+  // Model cascade: prioritize gemini-3.8-flash (official stable recommended model) and gemini-3.1-flash-lite
   const modelCandidates = params.hasImage
-    ? ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.8-flash']
-    : ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-flash-latest'];
+    ? ['gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-3.5-flash-lite']
+    : ['gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-flash-latest'];
 
   let lastError: any = null;
   for (const model of modelCandidates) {
