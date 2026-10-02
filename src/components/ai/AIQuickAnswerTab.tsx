@@ -258,7 +258,7 @@ export const AIQuickAnswerTab: React.FC = () => {
       {result && (
         <div
           id="quick-answer-result-card"
-          className="bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800/60 rounded-2xl p-6 shadow-md space-y-5 animate-in fade-in duration-200"
+          className="response-card ai-response w-full max-w-full bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800/60 rounded-2xl p-4 sm:p-6 shadow-md space-y-5 animate-in fade-in duration-200"
         >
           {/* Header */}
           <div className="flex items-start justify-between gap-4 pb-3 border-b border-slate-100 dark:border-slate-800">

@@ -47,9 +47,19 @@ import { CreativeQuestionsPage } from './pages/CreativeQuestionsPage';
 const AppContent: React.FC = () => {
   const { currentPage, isGitHubModalOpen, setIsGitHubModalOpen } = useApp();
 
-  // Scroll to top on page transition
+  // Scroll to top on page transition & toggle body class for fullscreen AI Assistant
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    if (currentPage === 'ai_chat') {
+      document.body.classList.add('ai-assistant-page');
+    } else {
+      document.body.classList.remove('ai-assistant-page');
+    }
+
+    return () => {
+      document.body.classList.remove('ai-assistant-page');
+    };
   }, [currentPage]);
 
   const renderPage = () => {
@@ -123,21 +133,36 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const isAiChatPage = currentPage === 'ai_chat';
+
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
-      {/* Top site-wide announcement */}
-      <AnnouncementBanner />
+    <div
+      id="app-container"
+      className={`app-wrapper ${
+        isAiChatPage
+          ? 'h-screen h-[100dvh] flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200'
+          : 'min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200'
+      }`}
+    >
+      {/* Top site-wide announcement (hidden in AI Chat page to maximize chat viewport) */}
+      {!isAiChatPage && <AnnouncementBanner />}
 
       {/* Main responsive Navbar */}
       <Navbar />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      <main
+        className={
+          isAiChatPage
+            ? 'flex-1 w-full max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 pt-2 pb-0 overflow-hidden flex flex-col'
+            : 'flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6'
+        }
+      >
         {renderPage()}
       </main>
 
-      {/* Footer */}
-      <Footer />
+      {/* Footer (hidden when on ai_chat) */}
+      {!isAiChatPage && <Footer />}
 
       {/* GitHub Repository Manager Modal (Developer / Admin) */}
       <GitHubConnectionModal

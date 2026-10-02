@@ -629,141 +629,156 @@ export const AIChatPage: React.FC = () => {
   };
 
   return (
-    <div id="ai-chat-page-root" className="pb-16 max-w-6xl mx-auto px-2 sm:px-4">
+    <div
+      id="ai-chat-page-root"
+      className="flex-1 flex flex-col h-full overflow-hidden max-w-6xl mx-auto w-full px-2 sm:px-4 pb-2"
+    >
       {/* Top Academic Header Banner */}
       <div
         id="ai-chat-header-banner"
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-800 via-teal-800 to-slate-900 text-white p-6 sm:p-8 shadow-xl mb-6 border border-emerald-700/40"
+        className="shrink-0 relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-emerald-800 via-teal-800 to-slate-900 text-white p-4 sm:p-6 shadow-md mb-3 border border-emerald-700/40"
       >
         {/* Subtle Educational Chalkboard / Constellation Overlay */}
         <div className="absolute inset-0 opacity-[0.07] pointer-events-none bg-[radial-gradient(#34d399_1px,transparent_1px)] [background-size:16px_16px]" />
         <div className="absolute -top-24 -right-24 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-teal-500/20 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 p-0.5 shadow-lg shadow-emerald-950/40 flex items-center justify-center">
-                <div className="w-full h-full bg-slate-900/40 backdrop-blur-xs rounded-[14px] flex items-center justify-center text-white">
-                  <GraduationCap className="w-7 h-7 text-emerald-300" />
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-5">
+          <div className="space-y-1 sm:space-y-1.5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 p-0.5 shadow-md flex items-center justify-center shrink-0">
+                <div className="w-full h-full bg-slate-900/40 backdrop-blur-xs rounded-[10px] flex items-center justify-center text-white">
+                  <GraduationCap className="w-5 h-5 text-emerald-300" />
                 </div>
               </div>
               <div>
-                <div className="flex items-center gap-2 text-xs font-semibold text-emerald-300 tracking-wide">
+                <div className="flex items-center gap-2 text-[11px] font-semibold text-emerald-300 tracking-wide">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                   <span>ডিজিটাল পাঠশালা • NCTB ও NCERT পাঠ্যক্রম অনুমোদিত</span>
                 </div>
-                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white flex items-center gap-2">
                   <span>AI শিক্ষক ও শিক্ষা সহায়ক</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-400/20 border border-emerald-300/30 text-emerald-200 font-medium">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-400/20 border border-emerald-300/30 text-emerald-200 font-medium">
                     v2.5 Smart
                   </span>
                 </h1>
               </div>
             </div>
-            <p className="text-slate-200 text-sm sm:text-base max-w-2xl leading-relaxed font-normal">
+            <p className="text-slate-200 text-xs sm:text-sm max-w-2xl leading-relaxed font-normal line-clamp-1 sm:line-clamp-2">
               যেকোনো অধ্যায়ের জটিল বিষয়, গণিতের নিখুঁত সমাধান, বিজ্ঞানের সূত্রের বাস্তব ব্যাখ্যা এবং দ্রুত নোট
               তৈরি করার জন্য তোমার ব্যক্তিগত এআই শিক্ষক।
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
             <button
               id="ai-chat-new-conversation-btn"
               onClick={handleClearChat}
-              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs sm:text-sm font-semibold flex items-center gap-2 transition backdrop-blur-sm shadow-sm"
+              className="px-3.5 py-1.5 sm:py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-semibold flex items-center gap-1.5 transition backdrop-blur-sm shadow-xs"
               title="নতুন আলোচনা শুরু করুন"
             >
-              <RotateCcw className="w-4 h-4 text-emerald-300" />
+              <RotateCcw className="w-3.5 h-3.5 text-emerald-300" />
               <span>নতুন আলোচনা</span>
             </button>
 
             <button
               id="ai-quick-notes-btn"
               onClick={() => setActiveMainTab('notes')}
-              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs sm:text-sm flex items-center gap-2 shadow-md transition"
+              className="px-3.5 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-sm transition"
             >
-              <FileText className="w-4 h-4 text-slate-950" />
+              <FileText className="w-3.5 h-3.5 text-slate-950" />
               <span>নোট জেনারেটর</span>
             </button>
           </div>
         </div>
 
         {/* 4-Tab Main Switcher */}
-        <div className="mt-6 pt-4 border-t border-white/15 flex items-center gap-2 overflow-x-auto scrollbar-none pb-1">
+        <div className="mt-3 sm:mt-4 pt-3 border-t border-white/15 flex items-center gap-1.5 sm:gap-2 overflow-x-auto scrollbar-none pb-0.5">
           <button
             onClick={() => setActiveMainTab('chat')}
-            className={`px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition flex items-center gap-2 whitespace-nowrap ${
+            className={`px-3 sm:px-4 py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1.5 whitespace-nowrap ${
               activeMainTab === 'chat'
-                ? 'bg-white text-emerald-950 shadow-md ring-2 ring-emerald-300/50'
+                ? 'bg-white text-emerald-950 shadow-sm ring-2 ring-emerald-300/50'
                 : 'bg-white/10 hover:bg-white/20 text-white'
             }`}
           >
-            <Bot className="w-4 h-4 text-emerald-600" />
+            <Bot className="w-3.5 h-3.5 text-emerald-600" />
             <span>AI শিক্ষক চ্যাট (Chat)</span>
           </button>
 
           <button
             onClick={() => setActiveMainTab('quick_answer')}
-            className={`px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition flex items-center gap-2 whitespace-nowrap ${
+            className={`px-3 sm:px-4 py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1.5 whitespace-nowrap ${
               activeMainTab === 'quick_answer'
-                ? 'bg-white text-emerald-950 shadow-md ring-2 ring-emerald-300/50'
+                ? 'bg-white text-emerald-950 shadow-sm ring-2 ring-emerald-300/50'
                 : 'bg-white/10 hover:bg-white/20 text-white'
             }`}
           >
-            <Zap className="w-4 h-4 text-amber-500" />
+            <Zap className="w-3.5 h-3.5 text-amber-500" />
             <span>১-ক্লিকে উত্তর (Quick)</span>
           </button>
 
           <button
             onClick={() => setActiveMainTab('notes')}
-            className={`px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition flex items-center gap-2 whitespace-nowrap ${
+            className={`px-3 sm:px-4 py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1.5 whitespace-nowrap ${
               activeMainTab === 'notes'
-                ? 'bg-white text-emerald-950 shadow-md ring-2 ring-emerald-300/50'
+                ? 'bg-white text-emerald-950 shadow-sm ring-2 ring-emerald-300/50'
                 : 'bg-white/10 hover:bg-white/20 text-white'
             }`}
           >
-            <FileText className="w-4 h-4 text-emerald-600" />
+            <FileText className="w-3.5 h-3.5 text-emerald-600" />
             <span>নোট সামারি (Notes)</span>
           </button>
 
           <button
             onClick={() => setActiveMainTab('mcqs')}
-            className={`px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition flex items-center gap-2 whitespace-nowrap ${
+            className={`px-3 sm:px-4 py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1.5 whitespace-nowrap ${
               activeMainTab === 'mcqs'
                 ? 'bg-white text-emerald-950 shadow-md ring-2 ring-emerald-300/50'
                 : 'bg-white/10 hover:bg-white/20 text-white'
             }`}
           >
-            <Target className="w-4 h-4 text-teal-500" />
+            <Target className="w-3.5 h-3.5 text-teal-500" />
             <span>MCQ কুইজ প্র্যাকটিস</span>
           </button>
         </div>
       </div>
 
-      {/* Render Active Feature Tab */}
-      {activeMainTab === 'quick_answer' && <AIQuickAnswerTab />}
-      {activeMainTab === 'notes' && <AINotesTab />}
-      {activeMainTab === 'mcqs' && <AIMcqGeneratorTab />}
+      {/* Render Active Feature Tab (wrapped in scrollable container for quick/notes/mcqs) */}
+      {activeMainTab === 'quick_answer' && (
+        <div className="flex-1 overflow-y-auto">
+          <AIQuickAnswerTab />
+        </div>
+      )}
+      {activeMainTab === 'notes' && (
+        <div className="flex-1 overflow-y-auto">
+          <AINotesTab />
+        </div>
+      )}
+      {activeMainTab === 'mcqs' && (
+        <div className="flex-1 overflow-y-auto">
+          <AIMcqGeneratorTab />
+        </div>
+      )}
 
       {/* Main AI Chat Interface Container */}
       {activeMainTab === 'chat' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 items-stretch overflow-hidden">
           {/* Mobile Settings Accordion Toggle Button (Visible on mobile/tablet only) */}
-          <div className="lg:hidden col-span-1">
+          <div className="lg:hidden col-span-1 shrink-0">
             <button
               type="button"
               onClick={() => setMobileSettingsOpen(!mobileSettingsOpen)}
-              className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm text-sm font-semibold text-slate-800 dark:text-slate-200"
+              className="w-full flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs text-xs font-semibold text-slate-800 dark:text-slate-200"
             >
-              <div className="flex items-center gap-2.5">
-                <SlidersHorizontal className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <span>পড়ার বিষয় ও শ্রেণি নির্ধারণ:</span>
-                <span className="text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded text-xs">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>বিষয় ও শ্রেণি:</span>
+                <span className="text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded text-[11px]">
                   {selectedClass.replace('class-', '')}ম • {currentClassSubjects.find((s) => s.id === selectedSubject)?.name}
                 </span>
               </div>
-              {mobileSettingsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              {mobileSettingsOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
             </button>
           </div>
 
@@ -772,7 +787,7 @@ export const AIChatPage: React.FC = () => {
             id="ai-context-sidebar"
             className={`${
               mobileSettingsOpen ? 'block' : 'hidden'
-            } lg:block lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-5 transition-all`}
+            } lg:block lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-4 overflow-y-auto max-h-full transition-all`}
           >
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-2">
@@ -923,19 +938,19 @@ export const AIChatPage: React.FC = () => {
           {/* Right Chat Panel: Modern Classroom Studio */}
           <section
             id="ai-chat-main-window"
-            className="lg:col-span-8 flex flex-col bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl shadow-sm overflow-hidden h-[750px] max-h-[85vh] relative"
+            className="chat-content-area lg:col-span-8 flex flex-col bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden h-full flex-1 relative min-h-0"
           >
             {/* Active Class & Topic Context Top Bar */}
             <div
               id="ai-chat-context-bar"
-              className="px-4 sm:px-6 py-3.5 bg-slate-50/90 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 gap-2 z-10"
+              className="px-3 sm:px-5 py-2.5 bg-slate-50/90 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 gap-2 z-10 shrink-0"
             >
-              <div className="flex items-center gap-2.5 truncate">
-                <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
-                  <Bot className="w-4 h-4" />
+              <div className="flex items-center gap-2 truncate">
+                <div className="w-6 h-6 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                  <Bot className="w-3.5 h-3.5" />
                 </div>
                 <div className="truncate">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
                     <span className="font-bold text-slate-900 dark:text-slate-100">
                       {selectedClass.replace('class-', '')}ম শ্রেণি
                     </span>
@@ -946,7 +961,7 @@ export const AIChatPage: React.FC = () => {
                     {currentChapterObj && (
                       <>
                         <span className="text-slate-300 dark:text-slate-600">•</span>
-                        <span className="truncate max-w-[150px] sm:max-w-xs text-slate-600 dark:text-slate-300">
+                        <span className="truncate max-w-[120px] sm:max-w-xs text-slate-600 dark:text-slate-300">
                           {currentChapterObj.title}
                         </span>
                       </>
@@ -955,31 +970,31 @@ export const AIChatPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="shrink-0 flex items-center gap-2">
+              <div className="shrink-0 flex items-center gap-1.5 sm:gap-2">
                 {/* Global Audio Indicator / Stop Voice */}
                 {speakingMsgId && (
                   <button
                     id="ai-chat-global-stop-voice-btn"
                     onClick={handleStopVoice}
-                    className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold flex items-center gap-1.5 transition text-xs shadow-md animate-pulse"
+                    className="px-2.5 py-1 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold flex items-center gap-1 transition text-xs shadow-xs animate-pulse"
                     title="ভয়েস বন্ধ করুন"
                   >
-                    <Square className="w-3.5 h-3.5 fill-current" />
-                    <span>ভয়েস থামাও</span>
+                    <Square className="w-3 h-3 fill-current" />
+                    <span>থামাও</span>
                   </button>
                 )}
 
                 <button
                   id="ai-chat-clear-history-top-btn"
                   onClick={handleClearChat}
-                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-600 dark:text-slate-300 hover:text-rose-600 flex items-center gap-1.5 transition text-xs font-semibold"
+                  className="px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-600 dark:text-slate-300 hover:text-rose-600 flex items-center gap-1 transition text-xs font-semibold"
                   title="চ্যাট হিস্ট্রি পরিষ্কার করুন"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">পরিষ্কার</span>
                 </button>
 
-                <span className="px-2.5 py-1 rounded-lg bg-emerald-100/80 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold border border-emerald-200/50 dark:border-emerald-800/60 hidden sm:inline-block">
+                <span className="px-2 py-0.5 rounded-lg bg-emerald-100/80 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold border border-emerald-200/50 dark:border-emerald-800/60 hidden sm:inline-block">
                   {activeMode === 'general'
                     ? 'সাধারণ মোড'
                     : activeMode === 'notes'
@@ -996,7 +1011,7 @@ export const AIChatPage: React.FC = () => {
             {/* Chat Messages Area with Subtle Academic Notebook/Graph Background */}
             <div
               id="ai-messages-container"
-              className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 relative bg-slate-50/60 dark:bg-slate-950/50"
+              className="chat-messages-container flex-1 overflow-y-auto px-2 py-3 sm:p-5 space-y-3.5 sm:space-y-5 relative bg-slate-50/60 dark:bg-slate-950/50"
               style={{
                 backgroundImage:
                   'radial-gradient(rgba(16, 185, 129, 0.07) 1px, transparent 1px)',
@@ -1013,21 +1028,21 @@ export const AIChatPage: React.FC = () => {
                   <div
                     key={msg.id}
                     id={`ai-message-${msg.id}`}
-                    className={`flex gap-3 sm:gap-3.5 relative z-10 ${
-                      isUser ? 'justify-end' : 'justify-start'
+                    className={`chat-message chat-message-row w-full max-w-full flex gap-2.5 sm:gap-3.5 relative z-10 ${
+                      isUser ? 'user-message justify-end' : 'ai-response justify-start'
                     }`}
                   >
                     {/* AI Teacher Avatar */}
                     {!isUser && (
-                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shrink-0 shadow-sm ring-2 ring-emerald-500/20 mt-1">
-                        <GraduationCap className="w-5 h-5 text-white" />
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shrink-0 shadow-sm ring-2 ring-emerald-500/20 mt-1">
+                        <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                       </div>
                     )}
 
-                    <div className="max-w-[88%] sm:max-w-[80%] space-y-2">
+                    <div className="flex-1 w-full max-w-full min-w-0 space-y-2">
                       {/* Sender Meta Header */}
                       <div
-                        className={`flex items-center gap-2 text-[11px] font-semibold ${
+                        className={`flex items-center gap-2 text-[11px] sm:text-xs font-semibold ${
                           isUser ? 'justify-end text-emerald-800 dark:text-emerald-300' : 'text-slate-500 dark:text-slate-400'
                         }`}
                       >
@@ -1038,7 +1053,7 @@ export const AIChatPage: React.FC = () => {
                             </span>
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                             {msg.contextInfo?.chapterTitle && (
-                              <span className="text-emerald-700 dark:text-emerald-400 truncate max-w-[150px]">
+                              <span className="text-emerald-700 dark:text-emerald-400 truncate max-w-[200px]">
                                 {msg.contextInfo.chapterTitle}
                               </span>
                             )}
@@ -1053,9 +1068,9 @@ export const AIChatPage: React.FC = () => {
                         {!isUser && <span className="text-slate-400 font-normal ml-auto">{msg.timestamp}</span>}
                       </div>
 
-                      {/* Message Bubble Card */}
+                      {/* Message Bubble Card: Full width responsive container */}
                       <div
-                        className={`p-4 sm:p-5 rounded-3xl text-sm leading-relaxed transition-all shadow-xs ${
+                        className={`response-card chat-message-bubble w-full max-w-full p-4 sm:p-5 sm:py-5.5 rounded-2xl sm:rounded-3xl text-[15px] sm:text-[16px] leading-relaxed transition-all shadow-xs break-words ${
                           isUser
                             ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white rounded-tr-xs shadow-md shadow-emerald-950/10'
                             : msg.isError
@@ -1286,7 +1301,7 @@ export const AIChatPage: React.FC = () => {
             {/* Bottom Input Area: Modern Floating Card Style */}
             <div
               id="ai-chat-input-area"
-              className="p-3.5 sm:p-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800"
+              className="chat-input-and-nav p-2.5 sm:p-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 shrink-0"
             >
               {/* Image Preview Thumbnail if attached */}
               {selectedImage && (

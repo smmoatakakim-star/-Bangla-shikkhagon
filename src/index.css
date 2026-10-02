@@ -6,3 +6,79 @@
   }
 }
 
+/* ==========================================
+   1. Fix Main Screen & Disable Page Scrolling on AI Assistant Page
+   ========================================== */
+body.ai-assistant-page,
+html:has(body.ai-assistant-page) {
+  height: 100vh;
+  height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden !important; /* বাইরের পেজ স্ক্রল হওয়া বন্ধ করবে */
+  width: 100%;
+}
+
+/* ==========================================
+   2. Layout Structure for Fullscreen Chat
+   ========================================== */
+/* মূল অ্যাপ কন্টেইনার পুরো স্ক্রিন জুড়ে থাকবে */
+body.ai-assistant-page .app-wrapper,
+body.ai-assistant-page #app-container {
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden !important;
+}
+
+/* শুধুমাত্র চ্যাট মেসেজ সেকশনে স্ক্রল চালু থাকবে */
+.chat-messages-container,
+.chat-content-area {
+  flex: 1;
+  overflow-y: auto !important; /* কেবল চ্যাট বক্সের ভেতর স্ক্রল হবে */
+  -webkit-overflow-scrolling: touch; /* মোবাইলে স্মুথ স্ক্রলিং */
+}
+
+/* ==========================================
+   3. Hide Website Footer on Chat/AI Page
+   ========================================== */
+body.ai-assistant-page footer,
+body.ai-assistant-page .site-footer,
+body.ai-assistant-page #main-footer {
+  display: none !important;
+}
+
+/* ==========================================
+   4. Full-Width Chat Message Cards & Readability
+   ========================================== */
+.chat-message,
+.response-card,
+.ai-response,
+.user-message {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+/* Ensure all chat message item containers and inner bubble cards stretch full-width */
+.chat-messages-container .chat-message-row {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.chat-messages-container .chat-message-bubble {
+  width: 100% !important;
+  max-width: 100% !important;
+  font-size: 15px;
+  line-height: 1.65;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+@media (min-width: 640px) {
+  .chat-messages-container .chat-message-bubble {
+    font-size: 16px;
+  }
+}
+

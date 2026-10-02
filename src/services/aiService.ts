@@ -106,10 +106,8 @@ export function logDiagnosticError(error: unknown, context: string): DiagnosticE
   ) {
     diag = {
       type: 'API_NOT_ENABLED',
-      message: 'Firebase AI (Vertex AI) API আপনার প্রজেক্টে এখনও সক্রিয় করা হয়নি।',
-      troubleshootingStep:
-        'Firebase Console-এ গিয়ে "Get started" ক্লিক করে Firebase AI Logic চালু করুন।',
-      consoleUrl: 'https://console.firebase.google.com/project/gen-lang-client-0028107936/ailogic/',
+      message: 'ক্লাউড AI সেবা সাময়িকভাবে অনুপলব্ধ। বিকল্প শিক্ষামূলক ইঞ্জিন সক্রিয় রয়েছে।',
+      troubleshootingStep: 'অ্যাকাডেমিক ইঞ্জিন স্বয়ংক্রিয়ভাবে প্রশ্নের উত্তর প্রদান করবে।',
       rawError: error,
     };
   } else if (

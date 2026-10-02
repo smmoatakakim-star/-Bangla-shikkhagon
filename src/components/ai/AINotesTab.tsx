@@ -239,7 +239,7 @@ export const AINotesTab: React.FC = () => {
       {generatedNotes && (
         <div
           id="generated-notes-display-card"
-          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4 animate-in fade-in duration-200"
+          className="response-card ai-response w-full max-w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-6 shadow-sm space-y-4 animate-in fade-in duration-200"
         >
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 flex-wrap gap-2">
             <div className="flex items-center gap-2">
