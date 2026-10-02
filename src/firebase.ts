@@ -14,11 +14,13 @@ import {
 } from 'firebase/firestore';
 import {
   initializeAppCheck,
+  ReCaptchaEnterpriseProvider,
   ReCaptchaV3Provider,
   getToken,
   AppCheck,
 } from 'firebase/app-check';
 import baseFirebaseConfig from '../firebase-applet-config.json';
+import { RECAPTCHA_ENTERPRISE_SITE_KEY } from './services/recaptchaService';
 
 // Production configuration for project gen-lang-client-0028107936
 const PROD_FIREBASE_CONFIG = {
@@ -86,24 +88,39 @@ export function initAppCheck(): AppCheck | null {
       (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN ?? true;
   }
 
-  const recaptchaSiteKey =
+  const enterpriseSiteKey =
+    (env.VITE_RECAPTCHA_ENTERPRISE_SITE_KEY as string) ||
+    RECAPTCHA_ENTERPRISE_SITE_KEY ||
+    '';
+
+  const v3SiteKey =
     (env.VITE_RECAPTCHA_SITE_KEY as string) ||
     (baseFirebaseConfig as any).recaptchaSiteKey ||
     '';
 
-  if (recaptchaSiteKey) {
+  const effectiveKey = enterpriseSiteKey || v3SiteKey;
+
+  if (effectiveKey) {
     try {
+      const provider = enterpriseSiteKey
+        ? new ReCaptchaEnterpriseProvider(enterpriseSiteKey)
+        : new ReCaptchaV3Provider(v3SiteKey);
+
       appCheckInstance = initializeAppCheck(app, {
-        provider: new ReCaptchaV3Provider(recaptchaSiteKey),
+        provider,
         isTokenAutoRefreshEnabled: true,
       });
-      console.log('🛡️ [Firebase App Check] Initialized with reCAPTCHA v3 provider.');
+      console.log(
+        `🛡️ [Firebase App Check] Initialized with ${
+          enterpriseSiteKey ? 'reCAPTCHA Enterprise' : 'reCAPTCHA v3'
+        } provider.`
+      );
     } catch (err) {
       console.warn('⚠️ [Firebase App Check] Initialization note:', err);
     }
   } else if (!isDev) {
     console.info(
-      'ℹ️ [Firebase App Check]: To enforce App Check in production on Firebase Hosting, configure a reCAPTCHA v3 site key in Firebase Console -> App Check.'
+      'ℹ️ [Firebase App Check]: To enforce App Check in production on Firebase Hosting, configure a reCAPTCHA Enterprise / v3 site key in Firebase Console -> App Check.'
     );
   }
 

@@ -26,6 +26,7 @@ import {
   GraduationCap,
   Volume2,
   VolumeX,
+  FileText,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useVoiceGuide } from '../context/VoiceGuideContext';
@@ -58,9 +59,9 @@ export const Navbar: React.FC = () => {
     { label: 'এসএসসি (SSC)', page: 'ssc_dashboard', icon: GraduationCap },
     { label: 'এইচএসসি (HSC)', page: 'hsc_dashboard', icon: Award },
     { label: 'সূত্রভাণ্ডার', page: 'formula_bank', icon: Sparkles },
-    { label: '🤖 AI সহায়ক', page: 'ai_chat', icon: Bot },
+    { label: 'সৃজনশীল প্রশ্ন', page: 'creative_questions', icon: FileText },
+    { label: '🤖 AI শিক্ষক', page: 'ai_chat', icon: Bot },
     { label: 'পড়াশোনা', page: 'classes', icon: Layers },
-    { label: 'ব্যাকরণ', page: 'grammar_master', icon: Languages },
     { label: 'প্রশ্নব্যাংক', page: 'question_bank', icon: HelpCircle },
     { label: 'মডেল টেস্ট', page: 'model_tests', icon: Award },
     { label: 'কমিউনিটি', page: 'posts', icon: MessageSquare },

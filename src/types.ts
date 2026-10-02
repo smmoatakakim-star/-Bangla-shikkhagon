@@ -1,4 +1,5 @@
 export type ClassId =
+  | 'class-5'
   | 'class-6'
   | 'class-7'
   | 'class-8'
@@ -130,17 +131,36 @@ export interface CQPart {
 }
 
 export interface CreativeQuestion {
-  id: string;
+  id: string; // Unique Question ID
+  classId?: ClassId;
+  subjectId?: SubjectId;
+  subjectName?: string;
+  chapterId?: string;
+  chapterTitle?: string;
+  topic?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
   stimulus?: string; // উদ্দীপক
   stem?: string; // উদ্দীপক alias
+  questionKa?: string; // ক প্রশ্ন (জ্ঞানমূলক - ১ নম্বর)
+  questionKha?: string; // খ প্রশ্ন (অনুধাবনমূলক - ২ নম্বর)
+  questionGa?: string; // গ প্রশ্ন (প্রয়োগমূলক - ৩ নম্বর)
+  questionGha?: string; // ঘ প্রশ্ন (উচ্চতর দক্ষতা - ৪ নম্বর)
+  answerKa?: string;
+  answerKha?: string;
+  answerGa?: string;
+  answerGha?: string;
+  fullAnswer?: string; // সম্পূর্ণ উত্তর
+  stepByStepExplanation?: string; // ধাপে ধাপে ব্যাখ্যা
+  markingGuide?: string; // নম্বরভিত্তিক উত্তর লেখার নির্দেশনা (১+২+৩+৪=১০)
+  tags?: string[];
+  source?: string;
+  group?: AcademicGroup;
+  paper?: string;
   questions?: CQSubQuestion[];
   partA?: CQPart;
   partB?: CQPart;
   partC?: CQPart;
   partD?: CQPart;
-  chapterId?: string;
-  subjectId?: SubjectId;
-  classId?: ClassId;
 }
 
 export interface ChapterInfo {
@@ -231,22 +251,26 @@ export interface FormulaExample {
 }
 
 export interface FormulaItem {
-  id: string;
-  orderNumber: number;
-  name: string;
-  formula: string;
+  id: string; // Unique Formula ID
+  orderNumber?: number;
+  name: string; // Formula Name
+  formula: string; // Formula
   classId: ClassId;
   subjectId: SubjectId;
   subjectName?: string;
   group?: AcademicGroup;
   paper?: string;
   chapterTitle?: string;
-  symbols: FormulaSymbol[];
+  topic?: string;
+  explanation?: string; // সহজ বাংলা ব্যাখ্যা
+  whenToUse: string; // কখন ব্যবহার করতে হয়
+  example: FormulaExample; // Example
+  difficulty?: 'easy' | 'medium' | 'hard';
+  searchKeywords?: string[];
+  symbols?: FormulaSymbol[];
   unit?: string;
-  whenToUse: string;
-  example: FormulaExample;
   warningOrMistake?: string;
-  tags: string[];
+  tags?: string[];
 }
 
 export type QuizMode =
@@ -424,9 +448,11 @@ export interface AppSettings {
 
 export type PageType =
   | 'home'
+  | 'class_dashboard'
   | 'ssc_dashboard'
   | 'hsc_dashboard'
   | 'formula_bank'
+  | 'creative_questions'
   | 'exam_prep'
   | 'daily_practice'
   | 'my_study'

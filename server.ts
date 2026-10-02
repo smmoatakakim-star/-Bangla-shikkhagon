@@ -989,15 +989,78 @@ app.get('/api/ai/status', (req, res) => {
   return res.json({
     active: !!ai,
     hasApiKey: !!ai,
-    defaultModel: 'gemini-3.1-flash-lite',
-    fallbackModels: ['gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest'],
+    defaultModel: 'gemini-3.5-flash-lite',
+    fallbackModels: ['gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-flash-latest'],
+    recaptchaConfigured: !!(process.env.RECAPTCHA_ENTERPRISE_API_KEY || process.env.RECAPTCHA_SECRET_KEY),
   });
 });
+
+// Helper for server-side reCAPTCHA Enterprise verification (Score-based)
+// Secret keys are ONLY read from server environment variables; never exposed to client.
+async function verifyRecaptchaEnterprise(token?: string): Promise<{ valid: boolean; score?: number }> {
+  if (!token || typeof token !== 'string') {
+    return { valid: true };
+  }
+
+  const apiKey = process.env.RECAPTCHA_ENTERPRISE_API_KEY || process.env.RECAPTCHA_SECRET_KEY;
+  const projectId =
+    process.env.RECAPTCHA_ENTERPRISE_PROJECT_ID ||
+    process.env.GOOGLE_CLOUD_PROJECT ||
+    'gen-lang-client-0028107936';
+  const siteKey =
+    process.env.RECAPTCHA_ENTERPRISE_SITE_KEY ||
+    process.env.VITE_RECAPTCHA_ENTERPRISE_SITE_KEY ||
+    process.env.VITE_RECAPTCHA_SITE_KEY;
+
+  if (!apiKey || !siteKey) {
+    // If not fully configured on server, pass through gracefully
+    return { valid: true };
+  }
+
+  try {
+    const url = `https://recaptchaenterprise.googleapis.com/v1/projects/${projectId}/assessments?key=${apiKey}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event: {
+          token,
+          siteKey,
+          expectedAction: 'ai_chat',
+        },
+      }),
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (res.ok) {
+      const data = (await res.json()) as any;
+      const score = data?.riskAnalysis?.score ?? 1.0;
+      const valid = Boolean(data?.tokenProperties?.valid);
+      return { valid, score };
+    }
+  } catch (err) {
+    console.warn('[reCAPTCHA Enterprise Server] Assessment note:', err);
+  }
+
+  return { valid: true };
+}
 
 // AI Chat endpoint
 app.post('/api/ai/chat', async (req, res) => {
   // Always guarantee standard JSON headers
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
+
+  // Verify reCAPTCHA token if provided
+  const recaptchaToken = (req.headers['x-recaptcha-token'] as string) || req.body?.recaptchaToken;
+  if (recaptchaToken) {
+    const assessment = await verifyRecaptchaEnterprise(recaptchaToken);
+    if (!assessment.valid || (assessment.score !== undefined && assessment.score < 0.2)) {
+      return res.status(403).json({
+        error: 'নিরাপত্তা যাচাই ব্যর্থ হয়েছে। অনুগ্রহ করে পৃষ্ঠাটি রিফ্রেশ করে আবার চেষ্টা করুন।',
+        success: false,
+      });
+    }
+  }
 
   try {
     const rawBody = req.body || {};

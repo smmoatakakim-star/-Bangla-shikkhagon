@@ -157,8 +157,14 @@ export const FormulaBankPage: React.FC = () => {
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 mr-1">শ্রেণি:</span>
             {[
               { id: 'all', label: 'সকল শ্রেণি' },
-              { id: 'ssc', label: 'SSC (৯ম-১০ম)' },
-              { id: 'hsc', label: 'HSC (১১শ-১২শ)' },
+              { id: 'class-5', label: '৫ম' },
+              { id: 'class-6', label: '৬ষ্ঠ' },
+              { id: 'class-7', label: '৭ম' },
+              { id: 'class-8', label: '৮ম' },
+              { id: 'class-9', label: '৯ম' },
+              { id: 'class-10', label: '১০ম' },
+              { id: 'ssc', label: 'SSC' },
+              { id: 'hsc', label: 'HSC' },
             ].map((cls) => (
               <button
                 key={cls.id}
@@ -166,9 +172,9 @@ export const FormulaBankPage: React.FC = () => {
                   setSelectedClass(cls.id as any);
                   setSelectedSubject('all');
                 }}
-                className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                   selectedClass === cls.id
-                    ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20'
+                    ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20 font-bold'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}
               >
@@ -394,17 +400,19 @@ export const FormulaBankPage: React.FC = () => {
                   </div>
 
                   {/* Tags */}
-                  <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-                    <Tag className="w-3 h-3 text-slate-400" />
-                    {item.tags.map((t, idx) => (
-                      <span
-                        key={idx}
-                        className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                      >
-                        #{t}
-                      </span>
-                    ))}
-                  </div>
+                  {item.tags && item.tags.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <Tag className="w-3 h-3 text-slate-400" />
+                      {item.tags.map((t, idx) => (
+                        <span
+                          key={idx}
+                          className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                        >
+                          #{t}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}

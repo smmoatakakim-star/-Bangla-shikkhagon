@@ -2,6 +2,7 @@ import { getAI, getGenerativeModel, GoogleAIBackend } from 'firebase/ai';
 import { app } from '../firebase';
 import { isRawHtmlDocument, sanitizeAiDirectAnswer } from '../utils/banglaUtils';
 import { ClassId, SubjectId } from '../types';
+import { executeRecaptchaEnterprise } from './recaptchaService';
 
 export interface ChatMessageParam {
   role: 'user' | 'assistant';
@@ -147,12 +148,22 @@ async function callServerAiProxy(
   const timeoutId = setTimeout(() => controller.abort(), 20000);
 
   try {
+    const recaptchaToken = await executeRecaptchaEnterprise('ai_chat');
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (recaptchaToken) {
+      headers['X-Recaptcha-Token'] = recaptchaToken;
+    }
+
     const res = await fetch('/api/ai/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         messages,
         context: context || {},
+        recaptchaToken: recaptchaToken || undefined,
       }),
       signal: controller.signal,
     });

@@ -42,9 +42,73 @@ export const QuizPlayPage: React.FC = () => {
     (s) => s.id === quiz?.subjectId && s.classId === quiz?.classId
   );
 
+  // Helper to randomize questions and options to prevent predictability and duplicate repetitions (Point 5)
+  const randomizeQuizQuestions = (rawQuestions: QuizQuestion[]): QuizQuestion[] => {
+    if (!rawQuestions || rawQuestions.length === 0) return [];
+    
+    // 1. Duplicate prevention via unique ID / Question text hash
+    const seen = new Set<string>();
+    const uniqueList = rawQuestions.filter((q) => {
+      const key = q.id || `${q.question}_${q.classId}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    // 2. Randomize question order (Fisher-Yates)
+    const shuffledList = [...uniqueList];
+    for (let i = shuffledList.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledList[i], shuffledList[j]] = [shuffledList[j], shuffledList[i]];
+    }
+
+    // 3. For each question, randomize option order and dynamically update correctAnswerIndex
+    return shuffledList.map((q) => {
+      const originalOptions = [...q.options];
+      const correctText = originalOptions[q.correctAnswerIndex ?? 0];
+
+      const indexedOpts = originalOptions.map((opt, idx) => ({
+        text: opt,
+        isCorrect: idx === (q.correctAnswerIndex ?? 0),
+      }));
+
+      // Shuffle options randomly
+      for (let i = indexedOpts.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [indexedOpts[i], indexedOpts[j]] = [indexedOpts[j], indexedOpts[i]];
+      }
+
+      const newOptions = indexedOpts.map((o) => o.text);
+      const newCorrectIdx = indexedOpts.findIndex((o) => o.isCorrect);
+
+      return {
+        ...q,
+        options: newOptions,
+        correctAnswerIndex: newCorrectIdx >= 0 ? newCorrectIdx : 0,
+      };
+    });
+  };
+
+  const [activeQuestions, setActiveQuestions] = useState<QuizQuestion[]>(() => {
+    return quiz?.questions ? randomizeQuizQuestions(quiz.questions) : [];
+  });
+
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedOptionIndex, setSelectedOptionIndex] = useState<number | null>(null);
   const [isAnswerSubmitted, setIsAnswerSubmitted] = useState(false);
+
+  // Sync and randomize when quiz changes
+  useEffect(() => {
+    if (quiz?.questions) {
+      setActiveQuestions(randomizeQuizQuestions(quiz.questions));
+      setCurrentQuestionIndex(0);
+      setSelectedOptionIndex(null);
+      setIsAnswerSubmitted(false);
+      setUserAnswers([]);
+      setIsQuizFinished(false);
+      setSecondsRemaining((quiz?.timeLimitMinutes || 15) * 60);
+    }
+  }, [quiz?.id]);
 
   // Timer
   const [secondsRemaining, setSecondsRemaining] = useState<number>(() => {
@@ -79,7 +143,7 @@ export const QuizPlayPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [isQuizFinished, quiz]);
 
-  if (!quiz || quiz.questions.length === 0) {
+  if (!quiz || activeQuestions.length === 0) {
     return (
       <div className="py-16 text-center space-y-4">
         <p className="text-slate-500">কুইজটি খুঁজে পাওয়া যায়নি।</p>
@@ -93,8 +157,8 @@ export const QuizPlayPage: React.FC = () => {
     );
   }
 
-  const currentQ: QuizQuestion = quiz.questions[currentQuestionIndex];
-  const totalQuestions = quiz.questions.length;
+  const currentQ: QuizQuestion = activeQuestions[currentQuestionIndex];
+  const totalQuestions = activeQuestions.length;
 
   const handleOptionSelect = (index: number) => {
     if (isAnswerSubmitted) return; // cannot change after submission
@@ -153,11 +217,15 @@ export const QuizPlayPage: React.FC = () => {
   };
 
   const handleRetryQuiz = () => {
+    if (quiz?.questions) {
+      setActiveQuestions(randomizeQuizQuestions(quiz.questions));
+    }
     setCurrentQuestionIndex(0);
     setSelectedOptionIndex(null);
     setIsAnswerSubmitted(false);
     setUserAnswers([]);
     setIsQuizFinished(false);
+    setSecondsRemaining((quiz?.timeLimitMinutes || 15) * 60);
   };
 
   const handleShareResult = () => {

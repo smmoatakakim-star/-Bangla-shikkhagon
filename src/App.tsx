@@ -41,6 +41,8 @@ import { CurriculumAuditPage } from './pages/CurriculumAuditPage';
 import { SSCDashboardPage } from './pages/SSCDashboardPage';
 import { HSCDashboardPage } from './pages/HSCDashboardPage';
 import { FormulaBankPage } from './pages/FormulaBankPage';
+import { ClassDashboardPage } from './pages/ClassDashboardPage';
+import { CreativeQuestionsPage } from './pages/CreativeQuestionsPage';
 
 const AppContent: React.FC = () => {
   const { currentPage, isGitHubModalOpen, setIsGitHubModalOpen } = useApp();
@@ -54,6 +56,10 @@ const AppContent: React.FC = () => {
     switch (currentPage) {
       case 'home':
         return <HomePage />;
+      case 'class_dashboard':
+        return <ClassDashboardPage />;
+      case 'creative_questions':
+        return <CreativeQuestionsPage />;
       case 'ssc_dashboard':
         return <SSCDashboardPage />;
       case 'hsc_dashboard':

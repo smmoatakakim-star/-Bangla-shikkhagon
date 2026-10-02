@@ -13,6 +13,16 @@ import { HSC_CHAPTERS } from './curriculum/hscChapters';
 
 export const ALL_CLASSES: ClassInfo[] = [
   {
+    id: 'class-5',
+    name: 'Class 5 (৫ম শ্রেণি)',
+    numericGrade: 5,
+    description: 'প্রাথমিক শিক্ষা সমাপনী ও ভিত্তি মজবুত করার প্রস্তুতি। বাংলা, গণিত, ইংরেজি, প্রাথমিক বিজ্ঞান ও সমাজ।',
+    iconName: 'Sparkles',
+    colorClass: 'from-amber-500 to-yellow-600',
+    totalChapters: 30,
+    totalQuizzes: 40,
+  },
+  {
     id: 'class-6',
     name: 'Class 6 (৬ষ্ঠ শ্রেণি)',
     numericGrade: 6,
@@ -85,6 +95,62 @@ export const ALL_CLASSES: ClassInfo[] = [
 ];
 
 export const ALL_SUBJECTS: SubjectInfo[] = [
+  // Class 5 Subjects
+  {
+    id: 'bangla',
+    name: 'বাংলা',
+    banglaName: 'আমার বাংলা বই (১ম ও ২য় পত্র)',
+    classId: 'class-5',
+    iconName: 'Languages',
+    badgeColor: 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border-rose-200 dark:border-rose-900',
+    description: 'দেশপ্রেম, গল্প, কবিতা ও ব্যাকরণের মৌলিক নিয়মের সহজ-সরল উপস্থাপনা।',
+  },
+  {
+    id: 'english',
+    name: 'English',
+    banglaName: 'English for Today & Basic Grammar',
+    classId: 'class-5',
+    iconName: 'Globe',
+    badgeColor: 'bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 border-sky-200 dark:border-sky-900',
+    description: 'Basic vocabulary, conversation dialogue, storytelling and reading comprehension.',
+  },
+  {
+    id: 'math',
+    name: 'প্রাথমিক গণিত',
+    banglaName: 'পাটিগণিত ও প্রাথমিক জ্যামিতি',
+    classId: 'class-5',
+    iconName: 'Calculator',
+    badgeColor: 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-900',
+    description: 'গুণ, ভাগ, চার প্রক্রিয়া, ল.সা.গু, গ.সা.গু, সাধারণ ভগ্নাংশ, গড়, শতকরা ও ক্ষেত্রফল।',
+  },
+  {
+    id: 'science',
+    name: 'প্রাথমিক বিজ্ঞান',
+    banglaName: 'পরিবেশ, পদার্থ ও স্বাস্থ্যবিধি',
+    classId: 'class-5',
+    iconName: 'Atom',
+    badgeColor: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900',
+    description: 'আমাদের পরিবেশ, বায়ু, পানি, পদার্থ ও শক্তি, সুস্থ জীবন ও স্বাস্থ্যসম্মত খাদ্যাভ্যাস।',
+  },
+  {
+    id: 'bgs',
+    name: 'বাংলাদেশ ও বিশ্বপরিচয়',
+    banglaName: 'ইতিহাস, সমাজ ও নাগরিক অধিকার',
+    classId: 'class-5',
+    iconName: 'Landmark',
+    badgeColor: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border-indigo-200 dark:border-indigo-900',
+    description: 'আমাদের মুক্তিযুদ্ধ, ঐতিহাসিক নিদর্শন, অধিকার ও দায়িত্ব এবং পরিবেশ সংরক্ষণ।',
+  },
+  {
+    id: 'religion',
+    name: 'ইসলাম ও নৈতিক শিক্ষা',
+    banglaName: 'আকাইদ, ইবাদত ও চরিত্র গঠন',
+    classId: 'class-5',
+    iconName: 'BookOpen',
+    badgeColor: 'bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 border-teal-200 dark:border-teal-900',
+    description: 'ঈমান, সালাত, সাওম, উত্তম চরিত্র এবং মহৎ জীবনের আদর্শিক শিক্ষা।',
+  },
+
   // Class 6 Subjects
   {
     id: 'bangla',

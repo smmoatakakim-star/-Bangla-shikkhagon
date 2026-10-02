@@ -33,6 +33,7 @@ import {
   X,
   Volume2,
   VolumeX,
+  FileText,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useVoiceGuide } from '../context/VoiceGuideContext';
@@ -324,7 +325,7 @@ export const HomePage: React.FC = () => {
           <div className="grid grid-cols-3 gap-2 pt-3 max-w-xs sm:max-w-sm mx-auto text-center border-t border-white/15">
             <div>
               <div className="text-lg sm:text-xl font-bold">{toBengaliDigits(classes.length)}টি</div>
-              <div className="text-[10px] text-emerald-200">শ্রেণি (৬ষ্ঠ-১২শ)</div>
+              <div className="text-[10px] text-emerald-200">শ্রেণি (৫ম-১২শ)</div>
             </div>
             <div>
               <div className="text-lg sm:text-xl font-bold">{toBengaliDigits(totalPlatformMcqs)}+</div>
@@ -394,8 +395,8 @@ export const HomePage: React.FC = () => {
           </span>
         </div>
 
-        {/* 2-column card grid on mobile, 4-column on desktop */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
+        {/* 2-column card grid on mobile, 4-column/5-column on desktop */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
           {/* 1. SSC Academy (SSC Hub) */}
           <div
             id="home-ssc-hub-card"
@@ -457,7 +458,7 @@ export const HomePage: React.FC = () => {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-white/20 backdrop-blur-xs border border-white/20">
-                  ফর্মুলা বুক
+                  ৫,০০০+ সূত্র
                 </span>
                 <Calculator className="w-5 h-5 text-amber-200 group-hover:scale-110 transition-transform" />
               </div>
@@ -474,11 +475,37 @@ export const HomePage: React.FC = () => {
             </div>
           </div>
 
-          {/* 4. Eid Special (ঈদ স্পেশাল) - Compact & Festive */}
+          {/* 4. Creative Questions Bank (৪০,০০০+ সৃজনশীল প্রশ্ন) */}
+          <div
+            id="home-creative-questions-card"
+            onClick={() => navigate('creative_questions')}
+            className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-700 via-violet-800 to-indigo-900 text-white p-3 sm:p-3.5 shadow-sm hover:shadow-md hover:scale-[1.01] transition-all cursor-pointer flex flex-col justify-between min-h-[135px] sm:min-h-[150px]"
+          >
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-white/20 backdrop-blur-xs border border-white/20 text-purple-200">
+                  ৪০,০০০+ CQ
+                </span>
+                <FileText className="w-5 h-5 text-purple-200 group-hover:scale-110 transition-transform" />
+              </div>
+              <h3 className="text-xs sm:text-sm font-bold text-white group-hover:translate-x-0.5 transition-transform leading-snug">
+                সৃজনশীল প্রশ্নব্যাংক
+              </h3>
+              <p className="text-[10px] text-purple-100 leading-tight line-clamp-2">
+                উদ্দীপক, ক-খ-গ-ঘ উত্তর, লেখার গাইড ও ৫,০০০+ প্রশ্ন/শ্রেণি।
+              </p>
+            </div>
+            <div className="pt-2 mt-2 border-t border-white/15 flex items-center justify-between text-[10px] font-bold text-purple-200 group-hover:text-white">
+              <span>প্রশ্নব্যাংক দেখুন</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          </div>
+
+          {/* 5. Eid Special (ঈদ স্পেশাল) - Compact & Festive */}
           <div
             id="home-eid-special-card"
             onClick={() => setShowEidModal(true)}
-            className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-rose-600 via-pink-600 to-purple-700 text-white p-3 sm:p-3.5 shadow-sm hover:shadow-md hover:scale-[1.01] transition-all cursor-pointer flex flex-col justify-between min-h-[135px] sm:min-h-[150px]"
+            className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-rose-600 via-pink-600 to-purple-700 text-white p-3 sm:p-3.5 shadow-sm hover:shadow-md hover:scale-[1.01] transition-all cursor-pointer flex flex-col justify-between min-h-[135px] sm:min-h-[150px] col-span-2 sm:col-span-1"
           >
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
@@ -745,22 +772,32 @@ export const HomePage: React.FC = () => {
           </button>
         </div>
 
-        {/* Compact 2-col on mobile */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
+        {/* 8 Education Levels Grid: Class 5, 6, 7, 8, 9, 10, SSC, HSC */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
           {classes.map((cls) => {
+            const handleClassClick = () => {
+              if (cls.id === 'ssc') {
+                navigate('ssc_dashboard');
+              } else if (cls.id === 'hsc') {
+                navigate('hsc_dashboard');
+              } else {
+                navigate('class_dashboard', { classId: cls.id });
+              }
+            };
+
             return (
               <div
                 key={cls.id}
                 id={`class-card-${cls.id}`}
-                onClick={() => navigate('subjects', { classId: cls.id })}
-                className="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 sm:p-3 shadow-xs hover:shadow-sm hover:border-emerald-500 dark:hover:border-emerald-500 transition-all cursor-pointer flex flex-col justify-between"
+                onClick={handleClassClick}
+                className="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-xs hover:shadow-md hover:border-emerald-500 dark:hover:border-emerald-500 transition-all cursor-pointer flex flex-col justify-between"
               >
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <div className="p-1.5 bg-slate-50 dark:bg-slate-800 rounded-lg group-hover:scale-105 transition-transform">
+                    <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-xl group-hover:scale-105 transition-transform shadow-2xs">
                       {getClassIcon(cls.iconName)}
                     </div>
-                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/40">
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/40">
                       গ্রেড {cls.numericGrade}
                     </span>
                   </div>
@@ -769,26 +806,42 @@ export const HomePage: React.FC = () => {
                     <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 transition-colors">
                       {cls.name}
                     </h3>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1">
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-2 mt-0.5">
                       {cls.description}
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-1 text-[10px] text-slate-600 dark:text-slate-300 font-medium">
-                    <span className="px-1 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-[9px]">
+                  <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-600 dark:text-slate-300 font-medium pt-1">
+                    <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-semibold">
                       {toBengaliDigits(chapters.filter((c) => c.classId === cls.id).length || cls.totalChapters)} অধ্যায়
                     </span>
-                    <span className="px-1 py-0.2 rounded bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 text-[9px]">
+                    <span className="px-1.5 py-0.5 rounded bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 text-[10px] font-semibold">
                       {toBengaliDigits(getPlatformMcqsByClass(cls.id).length)}+ MCQ
                     </span>
                   </div>
                 </div>
 
-                <div className="pt-2 mt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                  <span>প্রবেশ করুন</span>
-                  <div className="w-4 h-4 rounded bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition">
+                <div className="pt-2.5 mt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-1 text-[11px] font-semibold">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate('class_dashboard', { classId: cls.id });
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-600 hover:text-white text-emerald-700 dark:text-emerald-300 transition text-[10px] font-bold"
+                  >
+                    ড্যাশবোর্ড
+                  </button>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate('subjects', { classId: cls.id });
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition text-[10px] font-bold flex items-center gap-1"
+                  >
+                    <span>বিষয়সমূহ</span>
                     <ArrowRight className="w-2.5 h-2.5" />
-                  </div>
+                  </button>
                 </div>
               </div>
             );

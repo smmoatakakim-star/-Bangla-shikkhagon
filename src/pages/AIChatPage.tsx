@@ -469,11 +469,15 @@ export const AIChatPage: React.FC = () => {
     e.target.value = '';
   };
 
+  // Guard against duplicate / concurrent submissions
+  const inFlightRef = useRef(false);
+
   // Send message
   const handleSendMessage = async (customPrompt?: string) => {
     const textToSend = (customPrompt || inputText).trim();
-    if ((!textToSend && !selectedImage) || loading) return;
+    if ((!textToSend && !selectedImage) || loading || inFlightRef.current) return;
 
+    inFlightRef.current = true;
     const currentImage = selectedImage;
     setSelectedImage(null);
 
@@ -520,14 +524,25 @@ export const AIChatPage: React.FC = () => {
       }
       aiReply = sanitizeAiDirectAnswer(aiReply);
 
-      if (!aiReply) {
-        aiReply = generateEducationalFallbackAnswer(textToSend, selectedClass, selectedSubject);
+      if (!aiReply || !aiReply.trim()) {
+        const assistantMessage: AIChatMessage = {
+          id: `assistant-${Date.now()}`,
+          sender: 'assistant',
+          text: 'AI থেকে কোনো উত্তর পাওয়া যায়নি। অনুগ্রহ করে পুনরায় প্রশ্নটি পাঠান।',
+          isError: true,
+          errorDetail: 'The AI service returned an empty response. Please retry.',
+          retryPrompt: textToSend,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+        return;
       }
 
       const assistantMessage: AIChatMessage = {
         id: `assistant-${Date.now()}`,
         sender: 'assistant',
         text: aiReply,
+        isError: false,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         contextInfo: {
           classId: selectedClass,
@@ -539,13 +554,31 @@ export const AIChatPage: React.FC = () => {
 
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (err: any) {
-      console.warn('AI chat error caught, generating guaranteed curriculum answer:', err);
-      const fallbackReply = generateEducationalFallbackAnswer(textToSend, selectedClass, selectedSubject);
+      console.warn('AI chat error caught:', err);
+      const errMsg = err?.message || String(err);
+      let userFriendlyMsg = 'দুঃখিত, উত্তর প্রস্তুত করার সময় সমস্যা দেখা দিয়েছে।';
+      let errorDetail = '';
+
+      if (errMsg.toLowerCase().includes('network') || errMsg.toLowerCase().includes('failed to fetch')) {
+        userFriendlyMsg = 'ইন্টারনেট সংযোগ বিঘ্নিত হয়েছে।';
+        errorDetail = 'দয়া করে আপনার ইন্টারনেট কানেকশন বা ফায়ারওয়াল চেক করে পুনরায় পাঠান।';
+      } else if (errMsg.includes('429') || errMsg.toLowerCase().includes('quota')) {
+        userFriendlyMsg = 'AI সার্ভিসের দৈনিক কোটা সাময়িকভাবে পূর্ণ হয়েছে।';
+        errorDetail = 'কিছুক্ষণ পর পুনরায় প্রশ্নটি পাঠান।';
+      } else if (errMsg.includes('api-not-enabled')) {
+        userFriendlyMsg = 'Firebase AI (Vertex AI) সার্ভিস সক্রিয় করা প্রয়োজন।';
+        errorDetail = 'Firebase Console-এ গিয়ে AI Logic চালু করুন।';
+      } else {
+        errorDetail = errMsg.slice(0, 120);
+      }
 
       const assistantMessage: AIChatMessage = {
         id: `assistant-${Date.now()}`,
         sender: 'assistant',
-        text: fallbackReply,
+        text: userFriendlyMsg,
+        isError: true,
+        errorDetail,
+        retryPrompt: textToSend,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         contextInfo: {
           classId: selectedClass,
@@ -557,6 +590,7 @@ export const AIChatPage: React.FC = () => {
       setMessages((prev) => [...prev, assistantMessage]);
     } finally {
       setLoading(false);
+      inFlightRef.current = false;
     }
   };
 
