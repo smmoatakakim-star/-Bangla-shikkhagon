@@ -37,6 +37,10 @@ import {
   MessageSquare,
   Smile,
   Compass,
+  PanelLeft,
+  PanelLeftClose,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ClassId, SubjectId, AIChatMessage, AIChatMode } from '../types';
@@ -209,6 +213,12 @@ export const AIChatPage: React.FC = () => {
 
   // Mobile Settings Drawer toggle
   const [mobileSettingsOpen, setMobileSettingsOpen] = useState(false);
+
+  // Compact header state on mobile (auto-collapses on scroll or manually toggled)
+  const [isHeaderCompact, setIsHeaderCompact] = useState(false);
+
+  // Desktop Sidebar open/collapse state for Gemini / ChatGPT / AI Studio full-screen workspace
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
 
   // Input & state
   const [inputText, setInputText] = useState('');
@@ -628,120 +638,240 @@ export const AIChatPage: React.FC = () => {
     handleSendMessage(prompt);
   };
 
+  // Auto-compact banner on mobile when user scrolls down in messages
+  const handleMessagesScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const scrollTop = e.currentTarget.scrollTop;
+    if (scrollTop > 24) {
+      if (!isHeaderCompact) setIsHeaderCompact(true);
+    } else if (scrollTop <= 6) {
+      if (isHeaderCompact) setIsHeaderCompact(false);
+    }
+  };
+
   return (
     <div
       id="ai-chat-page-root"
-      className="flex-1 flex flex-col h-full overflow-hidden max-w-6xl mx-auto w-full px-2 sm:px-4 pb-2"
+      className="flex-1 flex flex-col h-full overflow-hidden w-full max-w-[1700px] mx-auto px-1.5 sm:px-3 lg:px-6 pb-16 md:pb-2"
     >
-      {/* Top Academic Header Banner */}
+      {/* Top Academic Header Banner: Smaller, lower height, and collapses on scroll */}
       <div
         id="ai-chat-header-banner"
-        className="shrink-0 relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-emerald-800 via-teal-800 to-slate-900 text-white p-4 sm:p-6 shadow-md mb-3 border border-emerald-700/40"
+        className={`shrink-0 relative overflow-hidden rounded-xl sm:rounded-3xl bg-gradient-to-br from-emerald-800 via-teal-800 to-slate-900 text-white shadow-sm border border-emerald-700/40 transition-all duration-300 ${
+          isHeaderCompact
+            ? 'p-1.5 sm:p-3 mb-1 sm:mb-2'
+            : 'p-2 sm:p-4 mb-1.5 sm:mb-2.5'
+        }`}
       >
         {/* Subtle Educational Chalkboard / Constellation Overlay */}
         <div className="absolute inset-0 opacity-[0.07] pointer-events-none bg-[radial-gradient(#34d399_1px,transparent_1px)] [background-size:16px_16px]" />
         <div className="absolute -top-24 -right-24 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-teal-500/20 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-5">
-          <div className="space-y-1 sm:space-y-1.5">
-            <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 p-0.5 shadow-md flex items-center justify-center shrink-0">
-                <div className="w-full h-full bg-slate-900/40 backdrop-blur-xs rounded-[10px] flex items-center justify-center text-white">
-                  <GraduationCap className="w-5 h-5 text-emerald-300" />
-                </div>
+        {isHeaderCompact ? (
+          /* Ultra-compact sticky mobile bar when user scrolls down */
+          <div className="relative z-10 flex items-center justify-between gap-1.5 sm:gap-3">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-emerald-500 to-teal-400 p-0.5 shadow-xs flex items-center justify-center shrink-0">
+                <GraduationCap className="w-3.5 h-3.5 text-white" />
               </div>
-              <div>
-                <div className="flex items-center gap-2 text-[11px] font-semibold text-emerald-300 tracking-wide">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>ডিজিটাল পাঠশালা • NCTB ও NCERT পাঠ্যক্রম অনুমোদিত</span>
-                </div>
-                <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white flex items-center gap-2">
-                  <span>AI শিক্ষক ও শিক্ষা সহায়ক</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-400/20 border border-emerald-300/30 text-emerald-200 font-medium">
-                    v2.5 Smart
-                  </span>
-                </h1>
+              <div className="flex items-center gap-1 truncate">
+                <span className="font-bold text-xs sm:text-sm text-white tracking-tight truncate">
+                  AI শিক্ষক
+                </span>
+                <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-400/20 border border-emerald-300/30 text-emerald-200 font-semibold shrink-0">
+                  v2.5
+                </span>
               </div>
             </div>
-            <p className="text-slate-200 text-xs sm:text-sm max-w-2xl leading-relaxed font-normal line-clamp-1 sm:line-clamp-2">
-              যেকোনো অধ্যায়ের জটিল বিষয়, গণিতের নিখুঁত সমাধান, বিজ্ঞানের সূত্রের বাস্তব ব্যাখ্যা এবং দ্রুত নোট
-              তৈরি করার জন্য তোমার ব্যক্তিগত এআই শিক্ষক।
-            </p>
+
+            {/* Compact Tab Switcher */}
+            <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-0.5">
+              <button
+                type="button"
+                onClick={() => setActiveMainTab('chat')}
+                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg font-bold text-[11px] transition flex items-center gap-1 shrink-0 ${
+                  activeMainTab === 'chat'
+                    ? 'bg-white text-emerald-950 shadow-xs'
+                    : 'bg-white/10 hover:bg-white/20 text-white'
+                }`}
+              >
+                <Bot className="w-3 h-3 text-emerald-600" />
+                <span>Chat</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveMainTab('quick_answer')}
+                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg font-bold text-[11px] transition flex items-center gap-1 shrink-0 ${
+                  activeMainTab === 'quick_answer'
+                    ? 'bg-white text-emerald-950 shadow-xs'
+                    : 'bg-white/10 hover:bg-white/20 text-white'
+                }`}
+              >
+                <Zap className="w-3 h-3 text-amber-500" />
+                <span>Quick</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveMainTab('notes')}
+                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg font-bold text-[11px] transition flex items-center gap-1 shrink-0 ${
+                  activeMainTab === 'notes'
+                    ? 'bg-white text-emerald-950 shadow-xs'
+                    : 'bg-white/10 hover:bg-white/20 text-white'
+                }`}
+              >
+                <FileText className="w-3 h-3 text-emerald-600" />
+                <span>নোট</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveMainTab('mcqs')}
+                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg font-bold text-[11px] transition flex items-center gap-1 shrink-0 ${
+                  activeMainTab === 'mcqs'
+                    ? 'bg-white text-emerald-950 shadow-xs'
+                    : 'bg-white/10 hover:bg-white/20 text-white'
+                }`}
+              >
+                <Target className="w-3 h-3 text-teal-500" />
+                <span>MCQ</span>
+              </button>
+            </div>
+
+            {/* Quick Actions & Expand Button */}
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                id="ai-chat-compact-reset-btn"
+                onClick={handleClearChat}
+                className="p-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[11px] flex items-center gap-1"
+                title="নতুন আলোচনা"
+              >
+                <RotateCcw className="w-3 h-3 text-emerald-300" />
+              </button>
+              <button
+                id="ai-chat-expand-banner-btn"
+                onClick={() => setIsHeaderCompact(false)}
+                className="p-1 rounded-lg bg-white/15 hover:bg-white/25 text-emerald-200 flex items-center gap-0.5 text-[10px] font-semibold"
+                title="বড় করুন"
+              >
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
+        ) : (
+          /* Normal Header View: Compact, streamlined height & vertical spacing */
+          <div>
+            <div className="relative z-10 flex items-center justify-between gap-2 sm:gap-4">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 p-0.5 shadow-md flex items-center justify-center shrink-0">
+                    <div className="w-full h-full bg-slate-900/40 backdrop-blur-xs rounded-[10px] flex items-center justify-center text-white">
+                      <GraduationCap className="w-4 h-4 text-emerald-300" />
+                    </div>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="hidden sm:flex items-center gap-2 text-[10px] font-semibold text-emerald-300 tracking-wide">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>ডিজিটাল পাঠশালা • NCTB ও NCERT পাঠ্যক্রম অনুমোদিত</span>
+                    </div>
+                    <h1 className="text-sm sm:text-xl font-bold tracking-tight text-white flex items-center gap-1.5">
+                      <span className="truncate">AI শিক্ষক ও শিক্ষা সহায়ক</span>
+                      <span className="text-[9px] sm:text-[10px] px-1.5 py-0.2 sm:py-0.5 rounded-full bg-emerald-400/20 border border-emerald-300/30 text-emerald-200 font-medium shrink-0">
+                        v2.5 Smart
+                      </span>
+                    </h1>
+                  </div>
+                </div>
+                <p className="text-slate-200 text-xs max-w-2xl leading-relaxed font-normal line-clamp-1 mt-0.5 hidden sm:block">
+                  যেকোনো অধ্যায়ের জটিল বিষয়, গণিতের নিখুঁত সমাধান ও দ্রুত নোট তৈরির এআই শিক্ষক।
+                </p>
+              </div>
 
-          <div className="flex items-center gap-2 flex-wrap shrink-0">
-            <button
-              id="ai-chat-new-conversation-btn"
-              onClick={handleClearChat}
-              className="px-3.5 py-1.5 sm:py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-semibold flex items-center gap-1.5 transition backdrop-blur-sm shadow-xs"
-              title="নতুন আলোচনা শুরু করুন"
-            >
-              <RotateCcw className="w-3.5 h-3.5 text-emerald-300" />
-              <span>নতুন আলোচনা</span>
-            </button>
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <button
+                  id="ai-chat-new-conversation-btn"
+                  onClick={handleClearChat}
+                  className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-[11px] sm:text-xs font-semibold flex items-center gap-1.5 transition backdrop-blur-sm shadow-xs"
+                  title="নতুন আলোচনা শুরু করুন"
+                >
+                  <RotateCcw className="w-3 h-3 text-emerald-300" />
+                  <span>নতুন আলোচনা</span>
+                </button>
 
-            <button
-              id="ai-quick-notes-btn"
-              onClick={() => setActiveMainTab('notes')}
-              className="px-3.5 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-sm transition"
-            >
-              <FileText className="w-3.5 h-3.5 text-slate-950" />
-              <span>নোট জেনারেটর</span>
-            </button>
+                <button
+                  id="ai-quick-notes-btn"
+                  onClick={() => setActiveMainTab('notes')}
+                  className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-[11px] sm:text-xs flex items-center gap-1.5 shadow-sm transition"
+                >
+                  <FileText className="w-3 h-3 text-slate-950" />
+                  <span className="hidden sm:inline">নোট জেনারেটর</span>
+                  <span className="sm:hidden">নোট</span>
+                </button>
+
+                {/* Collapse banner button for maximum chat workspace (Gemini / ChatGPT style) */}
+                <button
+                  onClick={() => setIsHeaderCompact(true)}
+                  className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-emerald-200 transition cursor-pointer"
+                  title="ব্যানার সংকুচিত করুন (বড় স্ক্রিন চ্যাট)"
+                >
+                  <ChevronUp className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* 4-Tab Main Switcher: Streamlined vertical padding */}
+            <div className="mt-1.5 sm:mt-2.5 pt-1.5 sm:pt-2 border-t border-white/15 flex items-center gap-1 sm:gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
+              <button
+                onClick={() => setActiveMainTab('chat')}
+                className={`px-2.5 sm:px-3.5 py-1 rounded-xl font-bold text-[11px] sm:text-xs transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeMainTab === 'chat'
+                    ? 'bg-white text-emerald-950 shadow-sm ring-2 ring-emerald-300/50'
+                    : 'bg-white/10 hover:bg-white/20 text-white'
+                }`}
+              >
+                <Bot className="w-3.5 h-3.5 text-emerald-600" />
+                <span>AI শিক্ষক চ্যাট (Chat)</span>
+              </button>
+
+              <button
+                onClick={() => setActiveMainTab('quick_answer')}
+                className={`px-2.5 sm:px-3.5 py-1 rounded-xl font-bold text-[11px] sm:text-xs transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeMainTab === 'quick_answer'
+                    ? 'bg-white text-emerald-950 shadow-sm ring-2 ring-emerald-300/50'
+                    : 'bg-white/10 hover:bg-white/20 text-white'
+                }`}
+              >
+                <Zap className="w-3.5 h-3.5 text-amber-500" />
+                <span>১-ক্লিকে উত্তর (Quick)</span>
+              </button>
+
+              <button
+                onClick={() => setActiveMainTab('notes')}
+                className={`px-2.5 sm:px-3.5 py-1 rounded-xl font-bold text-[11px] sm:text-xs transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeMainTab === 'notes'
+                    ? 'bg-white text-emerald-950 shadow-sm ring-2 ring-emerald-300/50'
+                    : 'bg-white/10 hover:bg-white/20 text-white'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                <span>নোট সামারি (Notes)</span>
+              </button>
+
+              <button
+                onClick={() => setActiveMainTab('mcqs')}
+                className={`px-2.5 sm:px-3.5 py-1 rounded-xl font-bold text-[11px] sm:text-xs transition flex items-center gap-1.5 whitespace-nowrap ${
+                  activeMainTab === 'mcqs'
+                    ? 'bg-white text-emerald-950 shadow-md ring-2 ring-emerald-300/50'
+                    : 'bg-white/10 hover:bg-white/20 text-white'
+                }`}
+              >
+                <Target className="w-3.5 h-3.5 text-teal-500" />
+                <span>MCQ কুইজ প্র্যাকটিস</span>
+              </button>
+            </div>
           </div>
-        </div>
-
-        {/* 4-Tab Main Switcher */}
-        <div className="mt-3 sm:mt-4 pt-3 border-t border-white/15 flex items-center gap-1.5 sm:gap-2 overflow-x-auto scrollbar-none pb-0.5">
-          <button
-            onClick={() => setActiveMainTab('chat')}
-            className={`px-3 sm:px-4 py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1.5 whitespace-nowrap ${
-              activeMainTab === 'chat'
-                ? 'bg-white text-emerald-950 shadow-sm ring-2 ring-emerald-300/50'
-                : 'bg-white/10 hover:bg-white/20 text-white'
-            }`}
-          >
-            <Bot className="w-3.5 h-3.5 text-emerald-600" />
-            <span>AI শিক্ষক চ্যাট (Chat)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveMainTab('quick_answer')}
-            className={`px-3 sm:px-4 py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1.5 whitespace-nowrap ${
-              activeMainTab === 'quick_answer'
-                ? 'bg-white text-emerald-950 shadow-sm ring-2 ring-emerald-300/50'
-                : 'bg-white/10 hover:bg-white/20 text-white'
-            }`}
-          >
-            <Zap className="w-3.5 h-3.5 text-amber-500" />
-            <span>১-ক্লিকে উত্তর (Quick)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveMainTab('notes')}
-            className={`px-3 sm:px-4 py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1.5 whitespace-nowrap ${
-              activeMainTab === 'notes'
-                ? 'bg-white text-emerald-950 shadow-sm ring-2 ring-emerald-300/50'
-                : 'bg-white/10 hover:bg-white/20 text-white'
-            }`}
-          >
-            <FileText className="w-3.5 h-3.5 text-emerald-600" />
-            <span>নোট সামারি (Notes)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveMainTab('mcqs')}
-            className={`px-3 sm:px-4 py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1.5 whitespace-nowrap ${
-              activeMainTab === 'mcqs'
-                ? 'bg-white text-emerald-950 shadow-md ring-2 ring-emerald-300/50'
-                : 'bg-white/10 hover:bg-white/20 text-white'
-            }`}
-          >
-            <Target className="w-3.5 h-3.5 text-teal-500" />
-            <span>MCQ কুইজ প্র্যাকটিস</span>
-          </button>
-        </div>
+        )}
       </div>
 
       {/* Render Active Feature Tab (wrapped in scrollable container for quick/notes/mcqs) */}
@@ -782,12 +912,14 @@ export const AIChatPage: React.FC = () => {
             </button>
           </div>
 
-          {/* Context & Study Controls Sidebar */}
+          {/* Context & Study Controls Sidebar: Collapsible on desktop for Gemini / ChatGPT / AI Studio big screen */}
           <aside
             id="ai-context-sidebar"
             className={`${
               mobileSettingsOpen ? 'block' : 'hidden'
-            } lg:block lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-4 overflow-y-auto max-h-full transition-all`}
+            } ${
+              desktopSidebarOpen ? 'lg:block lg:col-span-3 xl:col-span-3' : 'lg:hidden'
+            } bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-xs space-y-4 overflow-y-auto max-h-full transition-all`}
           >
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-2">
@@ -935,17 +1067,40 @@ export const AIChatPage: React.FC = () => {
             </div>
           </aside>
 
-          {/* Right Chat Panel: Modern Classroom Studio */}
+          {/* Right Chat Panel: Modern Classroom Studio - Expands to full screen width (col-span-12) when sidebar is collapsed */}
           <section
             id="ai-chat-main-window"
-            className="chat-content-area lg:col-span-8 flex flex-col bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden h-full flex-1 relative min-h-0"
+            className={`chat-content-area ${
+              desktopSidebarOpen ? 'lg:col-span-9 xl:col-span-9' : 'lg:col-span-12'
+            } flex flex-col bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden h-full flex-1 relative min-h-0 transition-all`}
           >
             {/* Active Class & Topic Context Top Bar */}
             <div
               id="ai-chat-context-bar"
-              className="px-3 sm:px-5 py-2.5 bg-slate-50/90 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 gap-2 z-10 shrink-0"
+              className="px-3 sm:px-5 py-2 sm:py-2.5 bg-slate-50/90 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 gap-2 z-10 shrink-0"
             >
               <div className="flex items-center gap-2 truncate">
+                {/* Desktop Sidebar Toggle for Gemini / ChatGPT / AI Studio big screen view */}
+                <button
+                  type="button"
+                  id="ai-chat-desktop-sidebar-toggle"
+                  onClick={() => setDesktopSidebarOpen(!desktopSidebarOpen)}
+                  className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs transition border border-slate-200 dark:border-slate-700 shadow-2xs cursor-pointer shrink-0"
+                  title={desktopSidebarOpen ? 'ফুলস্ক্রিন চ্যাট মোড (সাইডবার লুকান)' : 'সেটিংস প্যানেল দেখান'}
+                >
+                  {desktopSidebarOpen ? (
+                    <>
+                      <PanelLeftClose className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <span>ফুলস্ক্রিন মোড</span>
+                    </>
+                  ) : (
+                    <>
+                      <PanelLeft className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <span>সেটিংস প্যানেল</span>
+                    </>
+                  )}
+                </button>
+
                 <div className="w-6 h-6 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
                   <Bot className="w-3.5 h-3.5" />
                 </div>
@@ -1011,18 +1166,21 @@ export const AIChatPage: React.FC = () => {
             {/* Chat Messages Area with Subtle Academic Notebook/Graph Background */}
             <div
               id="ai-messages-container"
-              className="chat-messages-container flex-1 overflow-y-auto px-2 py-3 sm:p-5 space-y-3.5 sm:space-y-5 relative bg-slate-50/60 dark:bg-slate-950/50"
+              onScroll={handleMessagesScroll}
+              className="chat-messages-container flex-1 overflow-y-auto px-1.5 sm:px-4 py-2 sm:py-4 relative bg-slate-50/60 dark:bg-slate-950/50"
               style={{
                 backgroundImage:
                   'radial-gradient(rgba(16, 185, 129, 0.07) 1px, transparent 1px)',
                 backgroundSize: '22px 22px',
               }}
             >
-              {/* Subtle ambient lighting inside chat canvas */}
-              <div className="absolute top-10 left-10 w-72 h-72 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
-              <div className="absolute bottom-10 right-10 w-72 h-72 bg-teal-500/5 rounded-full blur-3xl pointer-events-none" />
+              {/* Centered spacious reading workspace for big screens (Gemini / ChatGPT / Google AI Studio) */}
+              <div className="max-w-4xl lg:max-w-5xl mx-auto w-full space-y-3 sm:space-y-4">
+                {/* Subtle ambient lighting inside chat canvas */}
+                <div className="absolute top-10 left-10 w-72 h-72 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute bottom-10 right-10 w-72 h-72 bg-teal-500/5 rounded-full blur-3xl pointer-events-none" />
 
-              {messages.map((msg) => {
+                {messages.map((msg) => {
                 const isUser = msg.sender === 'user';
                 return (
                   <div
@@ -1262,47 +1420,51 @@ export const AIChatPage: React.FC = () => {
                 </div>
               )}
 
-              <div ref={messagesEndRef} />
+                <div ref={messagesEndRef} />
+              </div>
             </div>
 
             {/* Quick Prompts Carousel */}
             <div
               id="ai-quick-prompts-tray"
-              className="px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800"
+              className="px-3 sm:px-6 py-2 sm:py-2.5 bg-slate-50 dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800"
             >
-              <div className="flex items-center justify-between gap-2 mb-1.5 text-xs text-slate-500 dark:text-slate-400 font-semibold">
-                <div className="flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                  <span>জনপ্রিয় পড়ালেখার জিজ্ঞাসা:</span>
+              <div className="max-w-4xl lg:max-w-5xl mx-auto w-full">
+                <div className="flex items-center justify-between gap-2 mb-1.5 text-xs text-slate-500 dark:text-slate-400 font-semibold">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    <span>জনপ্রিয় পড়ালেখার জিজ্ঞাসা:</span>
+                  </div>
+                  <span className="text-[11px] text-slate-400 hidden sm:inline">যেকোনো বিষয়ে ক্লিক করুন</span>
                 </div>
-                <span className="text-[11px] text-slate-400 hidden sm:inline">যেকোনো বিষয়ে ক্লিক করুন</span>
-              </div>
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-                {SUGGESTED_PROMPTS.map((p, idx) => (
-                  <button
-                    key={idx}
-                    id={`suggested-prompt-${idx}`}
-                    onClick={() => {
-                      setSelectedClass(p.classId as ClassId);
-                      setSelectedSubject(p.subjectId as SubjectId);
-                      handleSendMessage(p.text);
-                    }}
-                    className="whitespace-nowrap px-3.5 py-1.5 text-xs rounded-xl bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-emerald-800 dark:hover:text-emerald-300 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-medium transition shadow-2xs flex items-center gap-1.5"
-                  >
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold">
-                      {p.tag}
-                    </span>
-                    <span>{p.text}</span>
-                  </button>
-                ))}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                  {SUGGESTED_PROMPTS.map((p, idx) => (
+                    <button
+                      key={idx}
+                      id={`suggested-prompt-${idx}`}
+                      onClick={() => {
+                        setSelectedClass(p.classId as ClassId);
+                        setSelectedSubject(p.subjectId as SubjectId);
+                        handleSendMessage(p.text);
+                      }}
+                      className="whitespace-nowrap px-3.5 py-1.5 text-xs rounded-xl bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-emerald-800 dark:hover:text-emerald-300 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-medium transition shadow-2xs flex items-center gap-1.5"
+                    >
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold">
+                        {p.tag}
+                      </span>
+                      <span>{p.text}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
             {/* Bottom Input Area: Modern Floating Card Style */}
             <div
               id="ai-chat-input-area"
-              className="chat-input-and-nav p-2.5 sm:p-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 shrink-0"
+              className="chat-input-and-nav p-2.5 sm:p-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 shrink-0"
             >
+              <div className="max-w-4xl lg:max-w-5xl mx-auto w-full">
               {/* Image Preview Thumbnail if attached */}
               {selectedImage && (
                 <div className="flex items-center gap-3 p-2.5 mb-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-2xl">
@@ -1367,21 +1529,21 @@ export const AIChatPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className={`p-3 rounded-2xl border transition flex items-center justify-center shrink-0 ${
+                  className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border transition flex items-center justify-center shrink-0 ${
                     selectedImage
                       ? 'bg-emerald-100 dark:bg-emerald-950/60 border-emerald-500 text-emerald-800 dark:text-emerald-300'
                       : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
                   }`}
                   title="অঙ্ক বা সমীকরণের ছবি তুলুন/আপলোড করুন"
                 >
-                  <ImageIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                  <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 dark:text-emerald-400" />
                 </button>
 
                 {/* Voice-to-Text Microphone button */}
                 <button
                   type="button"
                   onClick={handleToggleVoiceInput}
-                  className={`p-3 rounded-2xl border transition flex items-center justify-center shrink-0 ${
+                  className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border transition flex items-center justify-center shrink-0 ${
                     isListening
                       ? 'bg-rose-500 text-white border-rose-600 shadow-md animate-pulse'
                       : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
@@ -1389,9 +1551,9 @@ export const AIChatPage: React.FC = () => {
                   title={isListening ? 'ভয়েস ইনপুট বন্ধ করুন' : 'মুখে বাংলায় প্রশ্ন বলুন (Voice Type)'}
                 >
                   {isListening ? (
-                    <MicOff className="w-5 h-5" />
+                    <MicOff className="w-4 h-4 sm:w-5 sm:h-5" />
                   ) : (
-                    <Mic className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                    <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 dark:text-emerald-400" />
                   )}
                 </button>
 
@@ -1411,10 +1573,10 @@ export const AIChatPage: React.FC = () => {
                     }}
                     placeholder={
                       selectedImage
-                        ? 'ছবি সম্পর্কে কোনো নির্দেশনা থাকলে লিখুন (বা সরাসরি পাঠান)...'
-                        : 'তোমার প্রশ্ন লিখুন (যেমন: সালোকসংশ্লেষণ কী? বা পিথাগোরাসের উপপাদ্যটি বুঝিয়ে দাও)...'
+                        ? 'ছবি সম্পর্কে নির্দেশনা দিন...'
+                        : 'তোমার প্রশ্ন লিখুন (যেমন: সালোকসংশ্লেষণ কী?)...'
                     }
-                    className="w-full resize-none max-h-32 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition leading-relaxed font-sans"
+                    className="w-full resize-none max-h-32 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl sm:rounded-2xl px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition leading-relaxed font-sans"
                   />
                 </div>
 
@@ -1423,20 +1585,21 @@ export const AIChatPage: React.FC = () => {
                   type="submit"
                   id="ai-chat-send-btn"
                   disabled={(!inputText.trim() && !selectedImage) || loading}
-                  className="p-3 sm:px-5 sm:py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-md shadow-emerald-950/20 transition flex items-center justify-center gap-2 shrink-0 font-bold"
+                  className="p-2.5 sm:px-5 sm:py-3 rounded-xl sm:rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-md shadow-emerald-950/20 transition flex items-center justify-center gap-1.5 sm:gap-2 shrink-0 font-bold"
                   title="প্রশ্ন পাঠান"
                 >
-                  <Send className="w-5 h-5" />
+                  <Send className="w-4 h-4 sm:w-5 sm:h-5" />
                   <span className="hidden sm:inline text-xs">পাঠান</span>
                 </button>
               </form>
 
-              <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mt-2 px-1">
+              <div className="hidden sm:flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mt-2 px-1">
                 <span>এনসিটিবি ও এনসিইআরটি সিলেবাস সহায়িকা</span>
-                <span className="hidden sm:inline">Enter চাপলে পাঠাবে • Shift+Enter নতুন লাইন</span>
+                <span>Enter চাপলে পাঠাবে • Shift+Enter নতুন লাইন</span>
               </div>
             </div>
-          </section>
+          </div>
+        </section>
         </div>
       )}
     </div>

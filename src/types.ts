@@ -487,6 +487,7 @@ export type PageType =
   | 'terms'
   | 'contact'
   | 'grammar_master'
+  | 'english_corner'
   | 'curriculum_audit';
 
 export type AIChatMode = 'general' | 'notes' | 'mcq' | 'math_steps' | 'exam_tips' | 'image_solver';

@@ -58,6 +58,7 @@ export const Navbar: React.FC = () => {
     { label: 'হোম', page: 'home', icon: BookOpen },
     { label: 'এসএসসি (SSC)', page: 'ssc_dashboard', icon: GraduationCap },
     { label: 'এইচএসসি (HSC)', page: 'hsc_dashboard', icon: Award },
+    { label: 'ইংলিশ কর্নার', page: 'english_corner', icon: Languages },
     { label: 'সূত্রভাণ্ডার', page: 'formula_bank', icon: Sparkles },
     { label: 'সৃজনশীল প্রশ্ন', page: 'creative_questions', icon: FileText },
     { label: '🤖 AI শিক্ষক', page: 'ai_chat', icon: Bot },

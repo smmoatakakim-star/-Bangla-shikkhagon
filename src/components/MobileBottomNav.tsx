@@ -18,7 +18,7 @@ export const MobileBottomNav: React.FC = () => {
       label: 'পড়াশোনা',
       page: 'classes' as PageType,
       icon: BookOpen,
-      matchPages: ['classes', 'subjects', 'chapters', 'lesson', 'ssc_dashboard', 'hsc_dashboard', 'formula_bank'],
+      matchPages: ['classes', 'subjects', 'chapters', 'lesson', 'ssc_dashboard', 'hsc_dashboard', 'formula_bank', 'english_corner'],
     },
     {
       label: 'কুইজ',
