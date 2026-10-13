@@ -27,6 +27,8 @@ import {
   Volume2,
   VolumeX,
   FileText,
+  Megaphone,
+  PenTool,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useVoiceGuide } from '../context/VoiceGuideContext';
@@ -56,6 +58,8 @@ export const Navbar: React.FC = () => {
 
   const navLinks: { label: string; page: PageType; icon: any }[] = [
     { label: 'হোম', page: 'home', icon: BookOpen },
+    { label: '📚 সিলেবাস', page: 'syllabus', icon: BookOpen },
+    { label: '✍️ লেখার গাইড', page: 'writing_guide', icon: PenTool },
     { label: 'এসএসসি (SSC)', page: 'ssc_dashboard', icon: GraduationCap },
     { label: 'এইচএসসি (HSC)', page: 'hsc_dashboard', icon: Award },
     { label: 'ইংলিশ কর্নার', page: 'english_corner', icon: Languages },
@@ -550,6 +554,14 @@ export const Navbar: React.FC = () => {
               </span>
             </button>
           </div>
+
+          <button
+            onClick={() => handleNavClick('notices')}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+          >
+            <Megaphone className="w-4 h-4 text-amber-500" />
+            <span>নোটিস বোর্ড ও জরুরি ঘোষণা</span>
+          </button>
 
           <button
             onClick={() => handleNavClick('about')}

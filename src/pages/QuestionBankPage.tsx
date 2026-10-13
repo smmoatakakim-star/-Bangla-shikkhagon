@@ -33,6 +33,7 @@ export const QuestionBankPage: React.FC = () => {
     toggleBookmarkQuestion,
     isQuestionBookmarked,
     recordWrongQuestion,
+    managedQuestions,
   } = useApp();
 
   const [selectedClassId, setSelectedClassId] = useState<ClassId>(
@@ -81,6 +82,30 @@ export const QuestionBankPage: React.FC = () => {
       pool.push(...getChapterQuestionBank(ch.id));
     });
 
+    // Merge published questions from Firebase Firestore
+    const publishedManaged: QuizQuestion[] = managedQuestions
+      .filter((q) => q.status === 'published' && (q.type === 'mcq' || !q.type))
+      .filter((q) => {
+        if (q.classId !== selectedClassId) return false;
+        if (selectedSubjectId !== 'all' && q.subjectId !== selectedSubjectId) return false;
+        if (selectedChapterId !== 'all' && (q.chapterId || 'ch-general') !== selectedChapterId) return false;
+        return true;
+      })
+      .map((q) => ({
+        id: q.id,
+        chapterId: q.chapterId || 'ch-general',
+        subjectId: q.subjectId as SubjectId,
+        classId: q.classId as ClassId,
+        question: q.question,
+        options: q.options || [],
+        correctAnswerIndex: q.correctAnswerIndex ?? 0,
+        explanation: q.explanation || 'সঠিক উত্তর নির্বাচন করা হয়েছে।',
+        source: q.source || 'ম্যানেজড প্রশ্নব্যাংক (Firebase)',
+        difficulty: 'medium' as const,
+      }));
+
+    pool = [...publishedManaged, ...pool];
+
     if (selectedDifficulty !== 'all') {
       pool = pool.filter((q) => q.difficulty === selectedDifficulty);
     }
@@ -96,7 +121,7 @@ export const QuestionBankPage: React.FC = () => {
     }
 
     return pool;
-  }, [chapters, selectedClassId, selectedSubjectId, selectedChapterId, selectedDifficulty, searchQuery]);
+  }, [chapters, selectedClassId, selectedSubjectId, selectedChapterId, selectedDifficulty, searchQuery, managedQuestions]);
 
   // Reset pagination on filter change
   React.useEffect(() => {

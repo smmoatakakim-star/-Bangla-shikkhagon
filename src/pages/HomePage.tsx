@@ -34,6 +34,10 @@ import {
   Volume2,
   VolumeX,
   FileText,
+  Megaphone,
+  Bell,
+  AlertTriangle,
+  PenTool,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useVoiceGuide } from '../context/VoiceGuideContext';
@@ -204,6 +208,10 @@ export const HomePage: React.FC = () => {
     toggleBookmarkQuestion,
     isQuestionBookmarked,
     recordWrongQuestion,
+    managedQuestions,
+    managedNotices,
+    realContentCounts,
+    settings,
   } = useApp();
 
   const { isSpeaking, replay, isVoiceEnabled } = useVoiceGuide();
@@ -220,20 +228,51 @@ export const HomePage: React.FC = () => {
   const totalPlatformMcqs = useMemo(() => getTotalPlatformMcqCount(), []);
 
   const categoryQuestions = useMemo(() => {
+    const publishedManaged: QuizQuestion[] = managedQuestions
+      .filter((q) => q.status === 'published')
+      .map((q) => ({
+        id: q.id,
+        chapterId: q.chapterId || 'ch-general',
+        subjectId: q.subjectId as SubjectId,
+        classId: q.classId as ClassId,
+        question: q.question,
+        options: q.options || [],
+        correctAnswerIndex: q.correctAnswerIndex ?? 0,
+        explanation: q.explanation || '',
+        source: q.source || 'ম্যানেজড প্রশ্নব্যাংক (Firebase)',
+        difficulty: 'medium' as const,
+      }));
+
+    let base: QuizQuestion[] = [];
     switch (mcqCategory) {
       case 'middle':
-        return allNctbMcqList.filter((q) => ['class-6', 'class-7', 'class-8'].includes(q.classId));
+        base = allNctbMcqList.filter((q) => ['class-6', 'class-7', 'class-8'].includes(q.classId));
+        break;
       case 'secondary':
-        return allNctbMcqList.filter((q) => ['class-9', 'class-10'].includes(q.classId));
+        base = allNctbMcqList.filter((q) => ['class-9', 'class-10'].includes(q.classId));
+        break;
       case 'ssc':
-        return getAllSscMcqs();
+        base = getAllSscMcqs();
+        break;
       case 'hsc':
-        return getAllHscMcqs();
+        base = getAllHscMcqs();
+        break;
       case 'featured':
       default:
-        return getAllPlatformMcqs();
+        base = getAllPlatformMcqs();
+        break;
     }
-  }, [mcqCategory]);
+
+    const relevantManaged = publishedManaged.filter((q) => {
+      if (mcqCategory === 'middle') return ['class-6', 'class-7', 'class-8'].includes(q.classId);
+      if (mcqCategory === 'secondary') return ['class-9', 'class-10'].includes(q.classId);
+      if (mcqCategory === 'ssc') return q.classId === 'ssc' || q.classId === 'class-10';
+      if (mcqCategory === 'hsc') return q.classId === 'hsc' || q.classId === 'class-11' || q.classId === 'class-12';
+      return true;
+    });
+
+    return [...relevantManaged, ...base];
+  }, [mcqCategory, managedQuestions]);
 
   const displayedHomeQuestions = useMemo(() => {
     if (!categoryQuestions || categoryQuestions.length === 0) return [];
@@ -257,6 +296,24 @@ export const HomePage: React.FC = () => {
   const handleNextHomeQuestions = () => {
     setMcqPageOffset((prev) => prev + 1);
   };
+
+  const homePublishedNotices = useMemo(() => {
+    const list = managedNotices.filter((n) => n.status === 'published');
+    if (list.length > 0) return list;
+    if (settings.showAnnouncement && settings.announcementText) {
+      return [
+        {
+          id: 'fallback-announcement',
+          title: 'জরুরি ঘোষণা ও সাইট নোটিস',
+          text: settings.announcementText,
+          type: 'info' as const,
+          showOnBanner: true,
+          status: 'published' as const,
+        },
+      ];
+    }
+    return [];
+  }, [managedNotices, settings]);
 
   const getSubjectName = (subId?: string) => {
     if (!subId) return 'সাধারণ বিষয়';
@@ -517,6 +574,206 @@ export const HomePage: React.FC = () => {
             </button>
           </div>
         </div>
+      </section>
+
+      {/* 1.5. Bangla & English Writing Guide Showcase (Phase 2 CMS) */}
+      <section
+        id="home-writing-guide-showcase"
+        className="rounded-2xl border border-teal-200 dark:border-teal-800/80 bg-gradient-to-br from-teal-50/60 via-white to-emerald-50/50 dark:from-slate-900 dark:via-slate-900 dark:to-teal-950/40 p-4 sm:p-5 shadow-xs space-y-3"
+      >
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 text-[10px] font-bold border border-teal-200 dark:border-teal-800">
+              <PenTool className="w-3 h-3 text-teal-600" />
+              <span>✍️ বাংলা ও ইংরেজি লেখার গাইড (Writing Guide)</span>
+            </div>
+            <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
+              প্রবন্ধ, রচনা, ভাবসম্প্রসারণ, সারাংশ, সারমর্ম, চিঠি ও আবেদনপত্র
+            </h3>
+            <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">
+              ২০২৬ বার্ষিক ও বোর্ড পরীক্ষার সিলেবাস অনুযায়ী শতভাগ মৌলিক শিক্ষামূলক পাঠ ও পূর্ণ নম্বর পাওয়ার কৌশল।
+            </p>
+          </div>
+
+          <button
+            onClick={() => navigate('writing_guide')}
+            className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-xs shrink-0 cursor-pointer"
+          >
+            <span>সম্পূর্ণ লেখার গাইড খুলুন</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* Real Content Counts Bar */}
+        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-2 text-xs">
+          <button
+            onClick={() => navigate('writing_guide')}
+            className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold text-[11px] hover:bg-emerald-100 transition"
+          >
+            প্রবন্ধ: {realContentCounts.totalProbondho}টি
+          </button>
+          <button
+            onClick={() => navigate('writing_guide')}
+            className="px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 font-bold text-[11px] hover:bg-blue-100 transition"
+          >
+            রচনা: {realContentCounts.totalRochona}টি
+          </button>
+          <button
+            onClick={() => navigate('writing_guide')}
+            className="px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-bold text-[11px] hover:bg-amber-100 transition"
+          >
+            অনুচ্ছেদ: {realContentCounts.totalParagraph}টি
+          </button>
+          <button
+            onClick={() => navigate('writing_guide')}
+            className="px-2.5 py-1 rounded-lg bg-purple-50 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 font-bold text-[11px] hover:bg-purple-100 transition"
+          >
+            ভাবসম্প্রসারণ: {realContentCounts.totalBhabshomprosharon}টি
+          </button>
+          <button
+            onClick={() => navigate('writing_guide')}
+            className="px-2.5 py-1 rounded-lg bg-teal-50 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 font-bold text-[11px] hover:bg-teal-100 transition"
+          >
+            সারাংশ: {realContentCounts.totalSarongsho}টি
+          </button>
+          <button
+            onClick={() => navigate('writing_guide')}
+            className="px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 font-bold text-[11px] hover:bg-rose-100 transition"
+          >
+            সারমর্ম: {realContentCounts.totalSarmormo}টি
+          </button>
+          <button
+            onClick={() => navigate('writing_guide')}
+            className="px-2.5 py-1 rounded-lg bg-cyan-50 dark:bg-cyan-950/60 text-cyan-800 dark:text-cyan-300 font-bold text-[11px] hover:bg-cyan-100 transition"
+          >
+            চিঠি: {realContentCounts.totalLetters}টি
+          </button>
+          <button
+            onClick={() => navigate('writing_guide')}
+            className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 font-bold text-[11px] hover:bg-indigo-100 transition"
+          >
+            আবেদনপত্র: {realContentCounts.totalApplications}টি
+          </button>
+          <button
+            onClick={() => navigate('writing_guide')}
+            className="px-2.5 py-1 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 font-bold text-[11px] hover:bg-sky-100 transition"
+          >
+            English Writing: {realContentCounts.totalEnglishWriting}টি
+          </button>
+        </div>
+      </section>
+
+      {/* 2. Official Site Notice Board & Announcements */}
+      {homePublishedNotices.length > 0 && (
+        <section
+          id="site-notice-board"
+          className="rounded-2xl border border-emerald-200 dark:border-emerald-800/80 bg-white dark:bg-slate-900 p-3.5 sm:p-5 shadow-xs space-y-3"
+        >
+          <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2.5">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                <Megaphone className="w-4 h-4 text-emerald-600 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
+                  স্কুল নোটিস বোর্ড ও জরুরি ঘোষণা
+                </h3>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                  অ্যাডমিন প্যানেল থেকে লাইভ হালনাগাদকৃত
+                </span>
+              </div>
+            </div>
+
+            <button
+              id="home-all-notices-btn"
+              onClick={() => navigate('notices')}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold transition border border-emerald-200/60 dark:border-emerald-800"
+            >
+              <span>সকল নোটিস ({toBengaliDigits(homePublishedNotices.length)}টি)</span>
+              <ArrowRight className="w-3 h-3" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            {homePublishedNotices.slice(0, 2).map((notice) => (
+              <div
+                key={notice.id}
+                className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-1.5 hover:border-emerald-400 transition"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      notice.type === 'urgent'
+                        ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+                        : notice.type === 'exam'
+                        ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300'
+                        : notice.type === 'festive'
+                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                        : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                    }`}
+                  >
+                    <Bell className="w-2.5 h-2.5" />
+                    <span>
+                      {notice.type === 'urgent'
+                        ? 'জরুরি'
+                        : notice.type === 'exam'
+                        ? 'পরীক্ষা'
+                        : notice.type === 'festive'
+                        ? 'ছুটি ও উৎসব'
+                        : 'বিজ্ঞপ্তি'}
+                    </span>
+                  </span>
+
+                  {notice.showOnBanner && (
+                    <span className="text-[9.5px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                      ব্যানারে চলছে
+                    </span>
+                  )}
+                </div>
+
+                <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-snug">
+                  {notice.title}
+                </h4>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed">
+                  {notice.text}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Official Syllabus & Academic Guidance Spotlight Banner */}
+      <section
+        id="home-official-syllabus-banner"
+        onClick={() => navigate('syllabus')}
+        className="rounded-2xl bg-gradient-to-r from-teal-900 via-slate-900 to-emerald-950 p-4 sm:p-5 text-white border border-teal-500/30 shadow-xs hover:border-emerald-400 transition cursor-pointer flex flex-col md:flex-row items-start md:items-center justify-between gap-3"
+      >
+        <div className="space-y-1 max-w-2xl">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/30">
+            <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+            <span>অফিসিয়াল কারিকুলাম ও একাডেমিক গাইডেন্স</span>
+          </div>
+          <h3 className="text-sm sm:text-base font-black text-white">
+            📚 ৫র্থ থেকে ১২শ শ্রেণির সরকারি সিলেবাস ও বার্ষিক মূল্যায়ন রূপরেখা
+          </h3>
+          <p className="text-[11px] text-slate-300 leading-relaxed">
+            জাতীয় শিক্ষাক্রম ও পাঠ্যপুস্তক বোর্ড (NCTB) ও শিক্ষা বোর্ড অনুমোদিত অধ্যায়ভিত্তিক পাঠ্যসূচি, মানবণ্টন, সৃজনশীল কাঠামো ও শিখন উদ্দেশ্য।
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate('syllabus');
+          }}
+          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer"
+        >
+          <span>সিলেবাস দেখুন</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </button>
       </section>
 
       {/* Front Feature Cards: SSC Hub, HSC Hub, Formula Bank, Eid Special - Compact 2-column mobile */}

@@ -482,12 +482,15 @@ export type PageType =
   | 'login'
   | 'register'
   | 'admin'
+  | 'notices'
+  | 'syllabus'
   | 'settings'
   | 'privacy'
   | 'terms'
   | 'contact'
   | 'grammar_master'
   | 'english_corner'
+  | 'writing_guide'
   | 'curriculum_audit';
 
 export type AIChatMode = 'general' | 'notes' | 'mcq' | 'math_steps' | 'exam_tips' | 'image_solver';
@@ -518,5 +521,354 @@ export interface AIGeneratedQuizItem {
   options: string[];
   correctAnswerIndex: number;
   explanation: string;
+}
+
+export interface ManagedClass {
+  id: string;
+  name: string;
+  numericGrade: number;
+  description: string;
+  iconName: string;
+  status: 'draft' | 'published';
+  totalChapters?: number;
+  totalQuizzes?: number;
+  updatedAt?: string;
+  createdAt?: string;
+}
+
+export interface ManagedSubject {
+  id: string;
+  name: string;
+  banglaName?: string;
+  classId: string;
+  iconName?: string;
+  description?: string;
+  status: 'draft' | 'published';
+  updatedAt?: string;
+  createdAt?: string;
+}
+
+export interface ManagedChapter {
+  id: string;
+  classId: string;
+  subjectId: string;
+  title: string;
+  chapterNumber?: number;
+  description?: string;
+  isPopular?: boolean;
+  status: 'draft' | 'published';
+  updatedAt?: string;
+  createdAt?: string;
+}
+
+export interface ManagedQuestion {
+  id: string;
+  classId: string;
+  subjectId: string;
+  chapterId?: string;
+  question: string;
+  options: string[];
+  correctAnswerIndex: number;
+  explanation: string;
+  source?: string;
+  type: 'mcq' | 'cq';
+  status: 'draft' | 'published';
+  updatedAt?: string;
+  createdAt?: string;
+}
+
+export interface ManagedNote {
+  id: string;
+  classId: string;
+  subjectId: string;
+  chapterId?: string;
+  title: string;
+  explanation: string;
+  keyPoints?: string[];
+  quickNotes?: string;
+  status: 'draft' | 'published';
+  updatedAt?: string;
+  createdAt?: string;
+}
+
+export interface ManagedNotice {
+  id: string;
+  title: string;
+  text: string;
+  type: 'urgent' | 'info' | 'festive' | 'exam';
+  showOnBanner: boolean;
+  status: 'draft' | 'published';
+  updatedAt?: string;
+  createdAt?: string;
+}
+
+export interface SiteSeoConfig {
+  id?: string;
+  siteTitle: string;
+  metaDescription: string;
+  keywords: string;
+  ogTitle: string;
+  ogDescription: string;
+  updatedAt?: string;
+}
+
+export interface AdminDraftItem {
+  id: string;
+  type: 'mcq' | 'lesson' | 'chapter' | 'notice';
+  topic: string;
+  targetClass: string;
+  targetSubject: string;
+  content: string;
+  status: 'draft' | 'published' | 'discarded';
+  parsedData?: any;
+  createdAt: string;
+}
+
+export interface AICommandHistoryItem {
+  id: string;
+  command: string;
+  timestamp: string;
+  actionType: 'mcq' | 'lesson' | 'chapter' | 'notice' | 'seo' | 'class' | 'subject' | 'general' | 'syllabus';
+  targetEntity?: string;
+  status: 'draft_ready' | 'published' | 'cancelled' | 'failed';
+  summary: string;
+  draftData?: any;
+}
+
+// ==========================================
+// OFFICIAL SYLLABUS & CURRICULUM INTERFACES
+// ==========================================
+
+export type OfficialSyllabusOrg =
+  | 'NCTB'
+  | 'শিক্ষা মন্ত্রণালয়'
+  | 'মাধ্যমিক ও উচ্চশিক্ষা অধিদপ্তর (DSHE)'
+  | 'ঢাকা শিক্ষা বোর্ড'
+  | 'চট্টগ্রাম শিক্ষা বোর্ড'
+  | 'রাজশাহী শিক্ষা বোর্ড'
+  | 'যশোর শিক্ষা বোর্ড'
+  | 'বরিশাল শিক্ষা বোর্ড'
+  | 'সিলেট শিক্ষা বোর্ড'
+  | 'দিনাজপুর শিক্ষা বোর্ড'
+  | 'ময়মনসিংহ শিক্ষা বোর্ড'
+  | 'কুমিল্লা শিক্ষা বোর্ড'
+  | 'মাদ্রাসা শিক্ষা বোর্ড'
+  | 'কারিগরি শিক্ষা বোর্ড'
+  | 'প্রাথমিক শিক্ষা অধিদপ্তর'
+  | (string & {});
+
+export type SyllabusExamType =
+  | 'annual' // বার্ষিক পরীক্ষা / মূল্যায়ন
+  | 'half_yearly' // অর্ধবার্ষিক পরীক্ষা / মূল্যায়ন
+  | 'pre_test' // প্রাক-নির্বাচনী পরীক্ষা
+  | 'test' // নির্বাচনী / টেস্ট পরীক্ষা
+  | 'board_final' // এসএসসি / এইচএসসি বোর্ড পরীক্ষা
+  | 'term_1' // ১ম প্রান্তিক / সামষ্টিক মূল্যায়ন
+  | 'term_2'; // ২য় প্রান্তিক / সামষ্টিক মূল্যায়ন
+
+export interface OfficialSyllabusSource {
+  sourceTitle: string;
+  sourceUrl: string;
+  sourceOrganization: OfficialSyllabusOrg;
+  publicationYear: number;
+  academicYear: string; // e.g. '২০২৬'
+  publicationDate?: string;
+  verificationStatus: 'verified' | 'official_pending';
+  verifiedBy?: string;
+  importedAt: string;
+  lastVerifiedAt: string;
+}
+
+export interface SyllabusMarksDistribution {
+  totalMarks: number; // e.g. 100
+  writtenMarks?: number; // e.g. 70
+  mcqMarks?: number; // e.g. 30
+  creativeMarks?: number; // e.g. 70
+  practicalMarks?: number; // e.g. 25
+  continuousAssessment?: number; // ধারাবাহিক মূল্যায়ন e.g. 30
+  summativeAssessment?: number; // সামষ্টিক মূল্যায়ন e.g. 70
+  questionPattern?: string; // প্রশ্নের ধারা ও মানবণ্টন
+  structureBreakdown?: {
+    section: string; // 'সৃজনশীল অংশ' / 'বহুনির্বাচনী'
+    marks: number;
+    description: string;
+  }[];
+  examInstructions?: string[];
+  specialNotes?: string[];
+}
+
+export interface SyllabusShortQuestion {
+  question: string;
+  answer: string;
+  mark?: number;
+  type?: 'জ্ঞানমূলক (ক)' | 'অনুধাবনমূলক (খ)' | 'সংক্ষিপ্ত';
+}
+
+export interface SyllabusCreativeQuestion {
+  stimulus: string; // উদ্দীপক
+  questions: {
+    level: 'ক' | 'খ' | 'গ' | 'ঘ';
+    q: string;
+    a: string;
+    mark: number;
+  }[];
+}
+
+export interface SyllabusMCQ {
+  question: string;
+  options: string[];
+  answerIndex: number;
+  explanation?: string;
+}
+
+export interface SyllabusLessonItem {
+  id: string;
+  lessonTitle: string; // e.g. 'অতিথির স্মৃতি'
+  author?: string; // e.g. 'শরৎচন্দ্র চট্টোপাধ্যায়'
+  genre?: 'prose' | 'poetry' | 'grammar' | 'composition' | 'chapter';
+  genreLabel?: string; // e.g. 'গদ্য / গল্প', 'কবিতা', 'ব্যাকরণ'
+  pageRange?: string; // e.g. 'পৃষ্ঠা ১-১২'
+  selectedTopics?: string[]; // নির্ধারিত পাঠ / বিষয়সমূহ
+  chapterId?: string; // Link to existing chapter if any
+  lessonId?: string; // Link to existing lesson if any
+  learningDetails: {
+    introduction: string; // 📖 পাঠ পরিচিতি
+    objectives: string[]; // 🎯 শেখার উদ্দেশ্য
+    easyExplanation: string; // 📝 সহজ ভাষায় বিষয়টি বোঝানো
+    keyThemes: string[]; // 📌 গুরুত্বপূর্ণ বিষয়
+    vocabulary: { word: string; meaning: string }[]; // 📚 কঠিন শব্দ/শব্দার্থ
+    coreConcepts: string[]; // 💡 মূল ধারণা
+    shortQuestions: SyllabusShortQuestion[]; // ❓ Original short questions
+    creativeQuestions: SyllabusCreativeQuestion[]; // ✍️ Original descriptive/creative questions
+    mcqs: SyllabusMCQ[]; // ✅ Original MCQ
+    quizId?: string; // 🧠 Quiz
+  };
+}
+
+export interface OfficialSyllabus {
+  id: string;
+  academicYear: string; // '২০২৬', '২০২৫'
+  classId: ClassId; // 'class-5', 'class-6', 'class-7', 'class-8', 'class-9', 'class-10', 'ssc', 'hsc'
+  className: string; // 'অষ্টম শ্রেণি', 'এসএসসি (১০ম)', 'এইচএসসি'
+  examType: SyllabusExamType;
+  examName: string; // 'বার্ষিক পরীক্ষা', 'অর্ধবার্ষিক পরীক্ষা', 'এসএসসি বোর্ড পরীক্ষা ২০২৬'
+  subjectId: SubjectId;
+  subjectName: string; // 'বাংলা প্রথম পত্র', 'বাংলা দ্বিতীয় পত্র'
+  paper?: string; // '১ম পত্র', '২য় পত্র', 'আবশ্যিক'
+  title: string; // '২০২৬ শিক্ষাবর্ষ — অষ্টম শ্রেণি — বাংলা প্রথম পত্র — বার্ষিক পরীক্ষা সিলেবাস'
+  source: OfficialSyllabusSource;
+  marksDistribution: SyllabusMarksDistribution;
+  items: SyllabusLessonItem[];
+  status: 'draft' | 'under_review' | 'verified' | 'approved' | 'published';
+  importedAt: string;
+  updatedAt: string;
+  hash?: string;
+}
+
+export type WritingCategory =
+  | 'probondho' // প্রবন্ধ
+  | 'rochona' // রচনা
+  | 'paragraph' // অনুচ্ছেদ
+  | 'bhabshomprosharon' // ভাবসম্প্রসারণ
+  | 'sarongsho' // সারাংশ
+  | 'sarmormo' // সারমর্ম
+  | 'letter' // চিঠি
+  | 'personal_letter' // ব্যক্তিগত চিঠি
+  | 'application' // আবেদনপত্র
+  | 'report' // প্রতিবেদন
+  | 'dialogue' // সংলাপ
+  | 'story' // গল্প লেখা
+  | 'completing_story' // গল্প সম্পূর্ণকরণ
+  | 'essay_writing' // রচনামূলক লেখা
+  | 'exam_writing_topics' // পরীক্ষার গুরুত্বপূর্ণ লেখার বিষয়
+  | 'english_paragraph' // English Paragraph
+  | 'english_composition' // English Composition
+  | 'english_application' // English Application
+  | 'english_letter' // English Letter
+  | 'english_email' // English Email
+  | 'english_dialogue' // English Dialogue
+  | 'english_story' // English Story
+  | 'english_completing_story'; // English Completing Story
+
+export type ContentLifecycleStatus = 'draft' | 'review' | 'approved' | 'published';
+
+export interface WritingGuideItem {
+  id: string;
+  title: string;
+  classId: ClassId | string;
+  className?: string;
+  subjectId: string;
+  exam: string; // e.g. '২০২৬ বার্ষিক পরীক্ষা', 'এসএসসি বোর্ড পরীক্ষা', 'এইচএসসি বোর্ড পরীক্ষা'
+  academicYear: string; // '২০২৬'
+  category: WritingCategory;
+  categoryLabel: string; // e.g. 'প্রবন্ধ', 'রচনা', 'ভাবসম্প্রসারণ', etc.
+  language: 'bn' | 'en';
+  status: ContentLifecycleStatus;
+
+  // General & Essay/Paragraph fields
+  introduction?: string;
+  structure?: string;
+  mainPoints?: string[];
+  originalExample: string;
+  importantTips?: string[];
+  commonMistakes?: string[];
+  practice?: string[];
+  examWritingTips?: string[];
+
+  // ভাবসম্প্রসারণ specific fields
+  moolBhab?: string; // মূল ভাব
+  somprosharithoBhab?: string; // সম্প্রসারিত ভাব
+  shikkhonioBishoy?: string; // শিক্ষণীয় বিষয়
+  examStructure?: string; // পরীক্ষায় লেখার কাঠামো
+
+  // সারাংশ & সারমর্ম specific fields
+  sourceText?: string; // মূল গদ্যাংশ বা পদ্যাংশ / উৎস
+  originalAnswer?: string; // সারাংশ বা সারমর্মের উত্তর
+  explanation?: string; // বিশ্লেষণ ও নিয়ম
+
+  // চিঠি & আবেদনপত্র specific fields
+  letterType?: string; // e.g. 'ব্যক্তিগত চিঠি', 'আবেদনপত্র'
+  applicationType?: string; // আবেদনের ধরন
+  situation?: string; // প্রেক্ষাপট
+
+  // প্রতিবেদন specific fields
+  reportStructure?: string; // কাঠামোগত বিন্যাস
+  keyPoints?: string[];
+
+  // সংলাপ specific fields
+  topic?: string;
+  dialogueSpeakers?: string[];
+
+  // গল্প specific fields
+  storyStructure?: string;
+  mainIdea?: string;
+  moral?: string; // নীতিশিক্ষা
+
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PlatformContentCounts {
+  totalLessons: number;
+  totalQuestions: number;
+  totalMcqs: number;
+  totalQuizzes: number;
+  totalNotes: number;
+  totalProbondho: number;
+  totalRochona: number;
+  totalParagraph: number;
+  totalBhabshomprosharon: number;
+  totalSarongsho: number;
+  totalSarmormo: number;
+  totalLetters: number;
+  totalPersonalLetters?: number;
+  totalApplications: number;
+  totalReports: number;
+  totalDialogues: number;
+  totalStories: number;
+  totalCompletingStories?: number;
+  totalEssayWriting?: number;
+  totalExamWritingTopics?: number;
+  totalEnglishWriting: number;
 }
 

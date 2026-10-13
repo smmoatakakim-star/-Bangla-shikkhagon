@@ -93,6 +93,146 @@
         "createdAt": { "type": "string", "maxLength": 50 }
       },
       "required": ["id", "targetType", "targetId", "reporterId", "reason", "status"]
+    },
+    "ManagedClass": {
+      "title": "ManagedClass",
+      "description": "Educational class or academic grade level",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 100 },
+        "numericGrade": { "type": "number" },
+        "description": { "type": "string", "maxLength": 500 },
+        "iconName": { "type": "string", "maxLength": 50 },
+        "status": { "type": "string", "enum": ["draft", "published"] },
+        "totalChapters": { "type": "number" },
+        "totalQuizzes": { "type": "number" },
+        "updatedAt": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "name", "numericGrade", "status"]
+    },
+    "ManagedSubject": {
+      "title": "ManagedSubject",
+      "description": "Curriculum subject belonging to a class",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 100 },
+        "banglaName": { "type": "string", "maxLength": 100 },
+        "classId": { "type": "string", "maxLength": 64 },
+        "iconName": { "type": "string", "maxLength": 50 },
+        "description": { "type": "string", "maxLength": 500 },
+        "status": { "type": "string", "enum": ["draft", "published"] },
+        "updatedAt": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "name", "classId", "status"]
+    },
+    "ManagedChapter": {
+      "title": "ManagedChapter",
+      "description": "Syllabus chapter under a specific subject and class",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "classId": { "type": "string", "maxLength": 64 },
+        "subjectId": { "type": "string", "maxLength": 64 },
+        "title": { "type": "string", "maxLength": 200 },
+        "chapterNumber": { "type": "number" },
+        "description": { "type": "string", "maxLength": 1000 },
+        "isPopular": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["draft", "published"] },
+        "updatedAt": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "classId", "subjectId", "title", "status"]
+    },
+    "ManagedQuestion": {
+      "title": "ManagedQuestion",
+      "description": "Educational MCQ or CQ question with explanations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "classId": { "type": "string", "maxLength": 64 },
+        "subjectId": { "type": "string", "maxLength": 64 },
+        "chapterId": { "type": "string", "maxLength": 128 },
+        "question": { "type": "string", "maxLength": 2000 },
+        "options": { "type": "array" },
+        "correctAnswerIndex": { "type": "number" },
+        "explanation": { "type": "string", "maxLength": 3000 },
+        "source": { "type": "string", "maxLength": 200 },
+        "type": { "type": "string", "enum": ["mcq", "cq"] },
+        "status": { "type": "string", "enum": ["draft", "published"] },
+        "updatedAt": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "classId", "subjectId", "question", "status"]
+    },
+    "ManagedNote": {
+      "title": "ManagedNote",
+      "description": "Educational study note, revision guide, or lesson",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "classId": { "type": "string", "maxLength": 64 },
+        "subjectId": { "type": "string", "maxLength": 64 },
+        "chapterId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "explanation": { "type": "string", "maxLength": 5000 },
+        "keyPoints": { "type": "array" },
+        "quickNotes": { "type": "string", "maxLength": 3000 },
+        "status": { "type": "string", "enum": ["draft", "published"] },
+        "updatedAt": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "classId", "subjectId", "title", "status"]
+    },
+    "ManagedNotice": {
+      "title": "ManagedNotice",
+      "description": "Site announcement, exam alert, or festive notice",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "text": { "type": "string", "maxLength": 1000 },
+        "type": { "type": "string", "enum": ["urgent", "info", "festive", "exam"] },
+        "showOnBanner": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["draft", "published"] },
+        "updatedAt": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "title", "text", "status"]
+    },
+    "SiteSeo": {
+      "title": "SiteSeo",
+      "description": "SEO titles, meta descriptions, and OpenGraph tags",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "siteTitle": { "type": "string", "maxLength": 200 },
+        "metaDescription": { "type": "string", "maxLength": 500 },
+        "keywords": { "type": "string", "maxLength": 500 },
+        "ogTitle": { "type": "string", "maxLength": 200 },
+        "ogDescription": { "type": "string", "maxLength": 500 },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "siteTitle", "metaDescription"]
+    },
+    "AdminDraft": {
+      "title": "AdminDraft",
+      "description": "Staging area for AI generated drafts awaiting admin approval",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "type": { "type": "string", "enum": ["mcq", "lesson", "chapter", "notice"] },
+        "topic": { "type": "string", "maxLength": 200 },
+        "targetClass": { "type": "string", "maxLength": 64 },
+        "targetSubject": { "type": "string", "maxLength": 64 },
+        "content": { "type": "string", "maxLength": 10000 },
+        "status": { "type": "string", "enum": ["draft", "published", "discarded"] },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "type", "topic", "status"]
     }
   },
   "firestore": {
@@ -115,6 +255,38 @@
     "/admins/{adminId}": {
       "schema": "User",
       "description": "Designated administrator records"
+    },
+    "/content_classes/{classId}": {
+      "schema": "ManagedClass",
+      "description": "Managed educational classes and grades"
+    },
+    "/content_subjects/{subjectId}": {
+      "schema": "ManagedSubject",
+      "description": "Managed curriculum subjects"
+    },
+    "/content_chapters/{chapterId}": {
+      "schema": "ManagedChapter",
+      "description": "Managed curriculum chapters"
+    },
+    "/content_questions/{questionId}": {
+      "schema": "ManagedQuestion",
+      "description": "Managed questions and MCQs"
+    },
+    "/content_notes/{noteId}": {
+      "schema": "ManagedNote",
+      "description": "Managed educational lesson notes and study materials"
+    },
+    "/content_notices/{noticeId}": {
+      "schema": "ManagedNotice",
+      "description": "Managed site notices and announcement banners"
+    },
+    "/site_config/{configId}": {
+      "schema": "SiteSeo",
+      "description": "SEO titles, meta tags, and site configuration"
+    },
+    "/admin_drafts/{draftId}": {
+      "schema": "AdminDraft",
+      "description": "AI-generated drafts awaiting admin review and publishing"
     }
   }
 }

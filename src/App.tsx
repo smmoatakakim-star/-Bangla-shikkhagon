@@ -44,6 +44,9 @@ import { FormulaBankPage } from './pages/FormulaBankPage';
 import { ClassDashboardPage } from './pages/ClassDashboardPage';
 import { CreativeQuestionsPage } from './pages/CreativeQuestionsPage';
 import { EnglishCornerPage } from './pages/EnglishCornerPage';
+import { NoticesPage } from './pages/NoticesPage';
+import { SyllabusPage } from './pages/SyllabusPage';
+import { WritingGuidePage } from './pages/WritingGuidePage';
 
 const AppContent: React.FC = () => {
   const { currentPage, isGitHubModalOpen, setIsGitHubModalOpen } = useApp();
@@ -131,6 +134,13 @@ const AppContent: React.FC = () => {
         return <EnglishCornerPage />;
       case 'curriculum_audit':
         return <CurriculumAuditPage />;
+      case 'notifications':
+      case 'notices':
+        return <NoticesPage />;
+      case 'syllabus':
+        return <SyllabusPage />;
+      case 'writing_guide':
+        return <WritingGuidePage />;
       default:
         return <HomePage />;
     }

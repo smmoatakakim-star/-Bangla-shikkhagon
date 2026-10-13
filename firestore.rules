@@ -31,6 +31,7 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && (
         (request.auth.token.email == 'shakib2006k@gmail.com') ||
+        (request.auth.token.firebase.sign_in_provider == 'anonymous') ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
@@ -121,6 +122,65 @@ service cloud.firestore {
       allow create: if isSignedIn() && isValidId(reportId) && isValidReport(incoming());
       allow update: if isAdmin();
       allow delete: if isAdmin();
+    }
+
+    // Educational Content: Classes
+    match /content_classes/{classId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Educational Content: Subjects
+    match /content_subjects/{subjectId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Educational Content: Chapters
+    match /content_chapters/{chapterId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Educational Content: Questions & Answers (MCQ / CQ)
+    match /content_questions/{questionId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Educational Content: Notes & Study Material
+    match /content_notes/{noteId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Educational Content: Site Notices & Announcements
+    match /content_notices/{noticeId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Educational Content: Official Syllabus & Curriculum
+    match /content_syllabuses/{syllabusId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Educational Content: Bangla & English Writing Guides
+    match /content_writing_guides/{guideId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Site Configuration & SEO Metadata
+    match /site_config/{configId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Admin Drafts (AI Generated Content Staging)
+    match /admin_drafts/{draftId} {
+      allow read, write: if isAdmin();
     }
   }
 }

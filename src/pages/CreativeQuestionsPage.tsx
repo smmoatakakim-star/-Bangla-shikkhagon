@@ -29,7 +29,7 @@ import {
 } from '../data/creativeQuestionData';
 
 export const CreativeQuestionsPage: React.FC = () => {
-  const { pageParams, navigate } = useApp();
+  const { classes, subjects, chapters, managedQuestions, pageParams, navigate } = useApp();
 
   const initialClass = (pageParams?.targetClass as ClassId) || 'all';
 
@@ -52,9 +52,38 @@ export const CreativeQuestionsPage: React.FC = () => {
   const [practiceActive, setPracticeActive] = useState(false);
   const [practiceSecondsLeft, setPracticeSecondsLeft] = useState(21 * 60);
 
-  // Filtered Creative Questions
+  // Convert Firebase managed questions of type 'cq' to CreativeQuestion structure
+  const managedCQs: CreativeQuestion[] = useMemo(() => {
+    return managedQuestions
+      .filter((q) => q.status === 'published' && q.type === 'cq')
+      .map((q) => {
+        const sub = subjects.find((s) => s.id === q.subjectId);
+        const ch = chapters.find((c) => c.id === q.chapterId);
+        return {
+          id: q.id,
+          classId: q.classId as ClassId,
+          subjectId: q.subjectId as SubjectId,
+          subjectName: sub?.name || 'সাধারণ',
+          chapterId: q.chapterId || 'ch-general',
+          chapterTitle: ch?.title || 'সাধারণ অধ্যায়',
+          stimulus: q.question,
+          questionKa: q.options?.[0] || 'জ্ঞানমূলক প্রশ্ন',
+          questionKha: q.options?.[1] || 'অনুধাবনমূলক প্রশ্ন',
+          questionGa: q.options?.[2] || 'প্রয়োগমূলক প্রশ্ন',
+          questionGha: q.options?.[3] || 'উচ্চতর দক্ষতামূলক প্রশ্ন',
+          answerKa: q.explanation || 'সঠিক উত্তর দেওয়া হয়েছে।',
+          answerKha: q.explanation || 'ব্যাখ্যা দেওয়া হয়েছে।',
+          answerGa: q.explanation || 'প্রয়োগিক বিশ্লেষণ দেওয়া হয়েছে।',
+          answerGha: q.explanation || 'উচ্চতর দক্ষতার মতামত ও সমাধান দেওয়া হয়েছে।',
+          difficulty: 'medium' as const,
+          source: q.source || 'ম্যানেজড সৃজনশীল প্রশ্নব্যাংক (Admin)',
+        };
+      });
+  }, [managedQuestions, subjects, chapters]);
+
+  // Filtered Creative Questions: merged with Firebase managed CQs
   const cqResult = useMemo(() => {
-    return getCreativeQuestions({
+    const staticResult = getCreativeQuestions({
       classId: selectedClass,
       subjectId: selectedSubject,
       chapterId: selectedChapter,
@@ -63,7 +92,36 @@ export const CreativeQuestionsPage: React.FC = () => {
       page: currentPage,
       pageSize: 6,
     });
-  }, [selectedClass, selectedSubject, selectedChapter, selectedDifficulty, searchTerm, currentPage]);
+
+    const filteredManaged = managedCQs.filter((cq) => {
+      if (selectedClass !== 'all' && cq.classId !== selectedClass) return false;
+      if (selectedSubject !== 'all' && cq.subjectId !== selectedSubject) return false;
+      if (selectedChapter !== 'all' && cq.chapterId !== selectedChapter) return false;
+      if (selectedDifficulty !== 'all' && cq.difficulty !== selectedDifficulty) return false;
+      if (searchTerm.trim()) {
+        const query = searchTerm.toLowerCase();
+        const matches =
+          cq.stimulus?.toLowerCase().includes(query) ||
+          cq.questionKa?.toLowerCase().includes(query) ||
+          cq.questionKha?.toLowerCase().includes(query) ||
+          cq.questionGa?.toLowerCase().includes(query) ||
+          cq.questionGha?.toLowerCase().includes(query) ||
+          cq.chapterTitle?.toLowerCase().includes(query);
+        if (!matches) return false;
+      }
+      return true;
+    });
+
+    if (filteredManaged.length === 0) return staticResult;
+
+    const mergedItems = [...filteredManaged, ...staticResult.items];
+    return {
+      items: mergedItems.slice(0, 6),
+      totalCount: staticResult.totalCount + filteredManaged.length,
+      totalPages: Math.ceil((staticResult.totalCount + filteredManaged.length) / 6),
+      currentPage,
+    };
+  }, [selectedClass, selectedSubject, selectedChapter, selectedDifficulty, searchTerm, currentPage, managedCQs]);
 
   const toggleExpand = (id: string) => {
     setExpandedAnswerIds((prev) => {

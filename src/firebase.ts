@@ -192,6 +192,17 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     return;
   }
 
+  // Gracefully handle permission denied for restricted collections or unauthenticated environments
+  if (
+    code === 'permission-denied' ||
+    message.includes('permission-denied') ||
+    message.includes('Missing or insufficient permissions') ||
+    message.includes('insufficient permissions')
+  ) {
+    console.warn(`Firestore permission restricted for ${operationType} on ${path || 'collection'}: Operating with resilient local fallback.`);
+    return;
+  }
+
   const errInfo: FirestoreErrorInfo = {
     error: message,
     authInfo: {

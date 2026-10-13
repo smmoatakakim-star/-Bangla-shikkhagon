@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import {
   User,
   ClassInfo,
@@ -16,7 +16,19 @@ import {
   ClassId,
   SubjectId,
   QuizResultRecord,
+  ManagedClass,
+  ManagedSubject,
+  ManagedChapter,
+  ManagedQuestion,
+  ManagedNote,
+  ManagedNotice,
+  SiteSeoConfig,
+  AdminDraftItem,
+  OfficialSyllabus,
+  WritingGuideItem,
+  PlatformContentCounts,
 } from '../types';
+import * as contentService from '../services/contentService';
 import {
   ALL_CLASSES,
   ALL_SUBJECTS,
@@ -71,6 +83,10 @@ import {
   deleteDoc,
   onSnapshot,
 } from 'firebase/firestore';
+import {
+  verifyAdminAccessCode,
+  updateAdminAccessCode,
+} from '../services/adminSecurityService';
 
 interface AppContextType {
   // State
@@ -209,6 +225,50 @@ interface AppContextType {
   deleteQuiz: (quizId: string) => void;
   addLesson: (lessonData: Omit<Lesson, 'id' | 'views'>) => void;
   addQuiz: (quizData: Omit<Quiz, 'id'>) => void;
+
+  // Real-time Firebase Educational Content Management
+  managedClasses: ManagedClass[];
+  managedSubjects: ManagedSubject[];
+  managedChapters: ManagedChapter[];
+  managedQuestions: ManagedQuestion[];
+  managedNotes: ManagedNote[];
+  managedNotices: ManagedNotice[];
+  siteSeo: SiteSeoConfig | null;
+  adminDrafts: AdminDraftItem[];
+  saveClass: (classData: ManagedClass) => Promise<void>;
+  deleteClass: (classId: string) => Promise<void>;
+  saveSubject: (subjectData: ManagedSubject) => Promise<void>;
+  deleteSubject: (subjectId: string) => Promise<void>;
+  saveChapter: (chapterData: ManagedChapter) => Promise<void>;
+  deleteChapter: (chapterId: string) => Promise<void>;
+  saveQuestion: (questionData: ManagedQuestion) => Promise<void>;
+  deleteQuestion: (questionId: string) => Promise<void>;
+  saveNote: (noteData: ManagedNote) => Promise<void>;
+  deleteNote: (noteId: string) => Promise<void>;
+  saveNotice: (noticeData: ManagedNotice) => Promise<void>;
+  deleteNotice: (noticeId: string) => Promise<void>;
+  saveSeo: (seoData: SiteSeoConfig) => Promise<void>;
+  saveDraft: (draft: AdminDraftItem) => Promise<void>;
+  deleteDraft: (draftId: string) => Promise<void>;
+  approveAndPublishDraft: (draft: AdminDraftItem) => Promise<void>;
+  syllabusList: OfficialSyllabus[];
+  saveSyllabus: (syllabusData: OfficialSyllabus) => Promise<void>;
+  deleteSyllabus: (syllabusId: string) => Promise<void>;
+  writingGuideList: WritingGuideItem[];
+  saveWritingGuide: (item: WritingGuideItem) => Promise<void>;
+  deleteWritingGuide: (id: string) => Promise<void>;
+  realContentCounts: PlatformContentCounts;
+
+  // Secure Admin Authentication & Control
+  isAdminFirebaseAuthenticated: boolean;
+  isAdminCodeVerified: boolean;
+  isAdminAuthenticated: boolean;
+  isAuthLoading: boolean;
+  verifyAdminAccessCodeAction: (code: string) => Promise<boolean>;
+  updateAdminAccessCodeAction: (newCode: string) => Promise<boolean>;
+  adminLoginWithPasscode: (passcode: string) => boolean;
+  adminLogout: () => Promise<void>;
+  bulkUpdateClassesRange: (startGrade: number, endGrade: number) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -335,79 +395,118 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isFirebaseLoading, setIsFirebaseLoading] = useState<boolean>(false);
   const [isGitHubModalOpen, setIsGitHubModalOpen] = useState<boolean>(false);
 
+  // Managed content states from Firebase Firestore
+  const [managedClasses, setManagedClasses] = useState<ManagedClass[]>([]);
+  const [managedSubjects, setManagedSubjects] = useState<ManagedSubject[]>([]);
+  const [managedChapters, setManagedChapters] = useState<ManagedChapter[]>([]);
+  const [managedQuestions, setManagedQuestions] = useState<ManagedQuestion[]>([]);
+  const [managedNotes, setManagedNotes] = useState<ManagedNote[]>([]);
+  const [managedNotices, setManagedNotices] = useState<ManagedNotice[]>([]);
+  const [siteSeo, setSiteSeo] = useState<SiteSeoConfig | null>(null);
+  const [adminDrafts, setAdminDrafts] = useState<AdminDraftItem[]>([]);
+  const [syllabusList, setSyllabusList] = useState<OfficialSyllabus[]>([]);
+  const [writingGuideList, setWritingGuideList] = useState<WritingGuideItem[]>([]);
+
+  // Verified admin session state
+  const [isAdminSessionVerified, setIsAdminSessionVerified] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem(STORAGE_PREFIX + 'admin_verified') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const [isAdminCodeVerified, setIsAdminCodeVerified] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem(STORAGE_PREFIX + 'admin_code_verified') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(false);
+
   const openGitHubChecker = () => setIsGitHubModalOpen(true);
 
-  // Sync Firebase Auth & listen to onAuthStateChanged
+  // Sync Firebase Auth & listen to onAuthStateChanged (instant & non-blocking)
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async (fbUser) => {
-      if (fbUser) {
-        const userEmail = fbUser.email || '';
-        const isAdminUser = userEmail.toLowerCase() === 'shakib2006k@gmail.com';
-        const uid = fbUser.uid;
+    // Failsafe timer: ensures auth loading never lasts more than 400ms
+    const safetyTimer = setTimeout(() => {
+      setIsAuthLoading(false);
+    }, 400);
 
-        try {
-          const userDoc = await getDoc(doc(db, 'users', uid));
-          if (userDoc.exists()) {
-            const profile = userDoc.data() as User;
-            if (isAdminUser && profile.role !== 'admin') {
-              profile.role = 'admin';
+    const unsubscribeAuth = onAuthStateChanged(auth, async (fbUser) => {
+      clearTimeout(safetyTimer);
+      try {
+        if (fbUser) {
+          const userEmail = fbUser.email || '';
+          const isAdminUser = userEmail.toLowerCase() === 'shakib2006k@gmail.com';
+          const uid = fbUser.uid;
+
+          let loadedProfile: User | null = null;
+          try {
+            const userDoc = await getDoc(doc(db, 'users', uid));
+            if (userDoc.exists()) {
+              loadedProfile = userDoc.data() as User;
+              if (isAdminUser && loadedProfile.role !== 'admin') {
+                loadedProfile.role = 'admin';
+              }
             }
-            setCurrentUser(profile);
+          } catch (e) {
+            console.warn('Error fetching user profile from Firestore:', e);
+          }
+
+          if (loadedProfile) {
+            setCurrentUser(loadedProfile);
             setUsers((prev) => {
               const exists = prev.some((u) => u.id === uid);
-              return exists ? prev.map((u) => (u.id === uid ? profile : u)) : [profile, ...prev];
+              return exists ? prev.map((u) => (u.id === uid ? loadedProfile! : u)) : [loadedProfile!, ...prev];
             });
-            return;
-          }
-        } catch (e) {
-          console.warn('Error fetching user profile from Firestore:', e);
-        }
-
-        const newUser: User = {
-          id: uid,
-          name: fbUser.displayName || userEmail.split('@')[0] || 'শিক্ষার্থী',
-          username: (userEmail.split('@')[0] || `user_${uid.slice(0, 5)}`).replace(/[^a-zA-Z0-9_]/g, ''),
-          email: userEmail,
-          role: isAdminUser ? 'admin' : 'student',
-          classGrade: 'class-8',
-          bio: `${isAdminUser ? 'সিস্টেম অ্যাডমিনিস্ট্রেটর' : '৮ম শ্রেণির শিক্ষার্থী'}। বাংলা শিক্ষাগরে পড়াশোনা করি।`,
-          avatar: fbUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${uid}`,
-          totalPosts: 0,
-          totalLikesReceived: 0,
-          quizResults: [],
-          savedLessonIds: [],
-          savedPostIds: [],
-          savedQuizIds: [],
-          createdAt: 'এখন',
-        };
-
-        if (isAdminUser) {
-          try {
-            await setDoc(doc(db, 'admins', uid), {
+          } else {
+            const newUser: User = {
               id: uid,
+              name: fbUser.displayName || userEmail.split('@')[0] || 'শিক্ষার্থী',
+              username: (userEmail.split('@')[0] || `user_${uid.slice(0, 5)}`).replace(/[^a-zA-Z0-9_]/g, ''),
               email: userEmail,
-              updatedAt: new Date().toISOString(),
-            }, { merge: true });
-          } catch (err) {
-            console.warn('Admin record sync note:', err);
+              role: isAdminUser ? 'admin' : 'student',
+              classGrade: 'class-8',
+              bio: `${isAdminUser ? 'সিস্টেম অ্যাডমিনিস্ট্রেটর' : '৮ম শ্রেণির শিক্ষার্থী'}। বাংলা শিক্ষাগরে পড়াশোনা করি।`,
+              avatar: fbUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${uid}`,
+              totalPosts: 0,
+              totalLikesReceived: 0,
+              quizResults: [],
+              savedLessonIds: [],
+              savedPostIds: [],
+              savedQuizIds: [],
+              createdAt: 'এখন',
+            };
+
+            if (isAdminUser) {
+              setDoc(doc(db, 'admins', uid), {
+                id: uid,
+                email: userEmail,
+                updatedAt: new Date().toISOString(),
+              }, { merge: true }).catch(() => {});
+            }
+
+            setDoc(doc(db, 'users', uid), newUser, { merge: true }).catch(() => {});
+
+            setCurrentUser(newUser);
+            setUsers((prev) => {
+              const exists = prev.some((u) => u.id === uid);
+              return exists ? prev.map((u) => (u.id === uid ? newUser : u)) : [newUser, ...prev];
+            });
           }
         }
-
-        try {
-          await setDoc(doc(db, 'users', uid), newUser, { merge: true });
-        } catch (e) {
-          console.warn('Firestore set user note:', e);
-        }
-
-        setCurrentUser(newUser);
-        setUsers((prev) => {
-          const exists = prev.some((u) => u.id === uid);
-          return exists ? prev.map((u) => (u.id === uid ? newUser : u)) : [newUser, ...prev];
-        });
+      } finally {
+        setIsAuthLoading(false);
       }
     });
 
-    return () => unsubscribeAuth();
+    return () => {
+      clearTimeout(safetyTimer);
+      unsubscribeAuth();
+    };
   }, []);
 
   // Listen to Firestore real-time updates for posts and comments
@@ -461,6 +560,235 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       unsubscribeComments();
     };
   }, []);
+
+  // Listen to Firestore real-time updates for Educational Content & SEO
+  useEffect(() => {
+    // 1. Classes
+    const unsubClasses = contentService.listenToManagedClasses((items) => {
+      setManagedClasses(items);
+      const published = items.filter((c) => c.status === 'published');
+      if (published.length > 0) {
+        const sorted = [...published].sort((a, b) => (a.numericGrade || 0) - (b.numericGrade || 0));
+        setClasses(
+          sorted.map((c) => ({
+            id: c.id as ClassId,
+            name: c.name,
+            numericGrade: c.numericGrade,
+            description: c.description || '',
+            iconName: c.iconName || 'BookOpen',
+            colorClass: 'emerald',
+            totalChapters: c.totalChapters || 15,
+            totalQuizzes: c.totalQuizzes || 20,
+          }))
+        );
+      } else if (items.length === 0) {
+        // Initial auto-seed default classes into Firestore
+        ALL_CLASSES.forEach((baseClass) => {
+          contentService.saveManagedClass({
+            id: baseClass.id,
+            name: baseClass.name,
+            numericGrade: baseClass.numericGrade,
+            description: baseClass.description,
+            iconName: baseClass.iconName,
+            status: 'published',
+            totalChapters: baseClass.totalChapters,
+            totalQuizzes: baseClass.totalQuizzes,
+          });
+        });
+      }
+    });
+
+    // 2. Subjects
+    const unsubSubjects = contentService.listenToManagedSubjects((items) => {
+      setManagedSubjects(items);
+      const published = items.filter((s) => s.status === 'published');
+      if (published.length > 0) {
+        setSubjects((prev) => {
+          const map = new Map<string, SubjectInfo>();
+          ALL_SUBJECTS.forEach((s) => map.set(s.id, s));
+          prev.forEach((s) => map.set(s.id, s));
+          published.forEach((s) => {
+            map.set(s.id as SubjectId, {
+              id: s.id as SubjectId,
+              name: s.name,
+              banglaName: s.banglaName || s.name,
+              classId: s.classId as ClassId,
+              iconName: s.iconName || 'BookOpen',
+              badgeColor: 'emerald',
+              description: s.description || '',
+            });
+          });
+          return Array.from(map.values());
+        });
+      }
+    });
+
+    // 3. Chapters
+    const unsubChapters = contentService.listenToManagedChapters((items) => {
+      setManagedChapters(items);
+      const published = items.filter((ch) => ch.status === 'published');
+      if (published.length > 0) {
+        setChapters((prev) => {
+          const map = new Map<string, ChapterInfo>();
+          ALL_CHAPTERS.forEach((ch) => map.set(ch.id, ch));
+          prev.forEach((ch) => map.set(ch.id, ch));
+          published.forEach((ch) => {
+            map.set(ch.id, {
+              id: ch.id,
+              classId: ch.classId as ClassId,
+              subjectId: ch.subjectId as SubjectId,
+              title: ch.title,
+              order: ch.chapterNumber || 1,
+              description: ch.description || '',
+              isPopular: ch.isPopular ?? false,
+              lessonCount: 5,
+            });
+          });
+          return Array.from(map.values());
+        });
+      }
+    });
+
+    // 4. Notes & Lessons
+    const unsubNotes = contentService.listenToManagedNotes((items) => {
+      setManagedNotes(items);
+      const published = items.filter((n) => n.status === 'published');
+      if (published.length > 0) {
+        setLessons((prev) => {
+          const map = new Map<string, Lesson>();
+          INITIAL_LESSONS.forEach((l) => map.set(l.id, l));
+          prev.forEach((l) => map.set(l.id, l));
+          published.forEach((n) => {
+            map.set(n.id, {
+              id: n.id,
+              classId: n.classId as ClassId,
+              subjectId: n.subjectId as SubjectId,
+              chapterId: n.chapterId || 'ch-general',
+              title: n.title,
+              order: 1,
+              explanation: n.explanation,
+              keyPoints: n.keyPoints || [],
+              quickNotes: n.quickNotes ? [n.quickNotes] : [],
+              examples: [],
+              qaList: [],
+              examTips: ['বোর্ড পরীক্ষার গুরুত্বপূর্ণ প্রশ্ন হিসেবে বিবেচনা করুন।'],
+              readTimeMinutes: 5,
+            });
+          });
+          return Array.from(map.values());
+        });
+      }
+    });
+
+    // 5. Questions & MCQs
+    const unsubQuestions = contentService.listenToManagedQuestions((items) => {
+      setManagedQuestions(items);
+    });
+
+function applySeoMetadata(seo: SiteSeoConfig) {
+  if (typeof document === 'undefined') return;
+  if (seo.siteTitle) {
+    document.title = seo.siteTitle;
+  }
+  if (seo.metaDescription) {
+    let metaDesc = document.querySelector('meta[name="description"]');
+    if (!metaDesc) {
+      metaDesc = document.createElement('meta');
+      metaDesc.setAttribute('name', 'description');
+      document.head.appendChild(metaDesc);
+    }
+    metaDesc.setAttribute('content', seo.metaDescription);
+  }
+  if (seo.keywords) {
+    let metaKeywords = document.querySelector('meta[name="keywords"]');
+    if (!metaKeywords) {
+      metaKeywords = document.createElement('meta');
+      metaKeywords.setAttribute('name', 'keywords');
+      document.head.appendChild(metaKeywords);
+    }
+    metaKeywords.setAttribute('content', seo.keywords);
+  }
+  let ogTitle = document.querySelector('meta[property="og:title"]');
+  if (!ogTitle) {
+    ogTitle = document.createElement('meta');
+    ogTitle.setAttribute('property', 'og:title');
+    document.head.appendChild(ogTitle);
+  }
+  ogTitle.setAttribute('content', seo.ogTitle || seo.siteTitle || '');
+
+  let ogDesc = document.querySelector('meta[property="og:description"]');
+  if (!ogDesc) {
+    ogDesc = document.createElement('meta');
+    ogDesc.setAttribute('property', 'og:description');
+    document.head.appendChild(ogDesc);
+  }
+  ogDesc.setAttribute('content', seo.ogDescription || seo.metaDescription || '');
+}
+
+    // 6. Notices & Announcements
+    const unsubNotices = contentService.listenToManagedNotices((items) => {
+      setManagedNotices(items);
+      const activeBannerNotice = items.find(
+        (n) => n.status === 'published' && n.showOnBanner
+      );
+      setSettings((prev) => ({
+        ...prev,
+        showAnnouncement: Boolean(activeBannerNotice),
+        announcementText: activeBannerNotice ? activeBannerNotice.text : '',
+      }));
+    });
+
+    // 7. Site SEO & Meta tags
+    const unsubSeo = contentService.listenToSiteSeo((seo) => {
+      setSiteSeo(seo);
+      if (seo) {
+        applySeoMetadata(seo);
+      }
+    });
+
+    // 8. Official Syllabus & Academic Guidance
+    const unsubSyllabus = contentService.listenToOfficialSyllabus((items) => {
+      setSyllabusList(items);
+    });
+
+    // 9. Writing Guide (বাংলা ও ইংরেজি লেখার গাইড)
+    const unsubWriting = contentService.listenToWritingGuides((items) => {
+      setWritingGuideList(items);
+    });
+
+    return () => {
+      unsubClasses();
+      unsubSubjects();
+      unsubChapters();
+      unsubNotes();
+      unsubQuestions();
+      unsubNotices();
+      unsubSeo();
+      unsubSyllabus();
+      unsubWriting();
+    };
+  }, []);
+
+  // Listen to Admin Drafts ONLY when admin is verified or authorized
+  useEffect(() => {
+    const isUserAdmin =
+      isAdminSessionVerified ||
+      currentUser?.role === 'admin' ||
+      currentUser?.email === 'shakib2006k@gmail.com';
+
+    if (!isUserAdmin) {
+      setAdminDrafts([]);
+      return;
+    }
+
+    const unsubDrafts = contentService.listenToAdminDrafts((drafts) => {
+      setAdminDrafts(drafts);
+    });
+
+    return () => {
+      unsubDrafts();
+    };
+  }, [isAdminSessionVerified, currentUser?.role, currentUser?.email]);
 
   // Sync dark theme to DOM
   useEffect(() => {
@@ -1314,6 +1642,238 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSettings(INITIAL_SETTINGS);
   };
 
+  // Content Service Actions (Classes, Subjects, Chapters, Questions, Notes, Notices, SEO, Drafts)
+  const saveClass = async (classData: ManagedClass) => {
+    await contentService.saveManagedClass(classData);
+  };
+  const deleteClass = async (classId: string) => {
+    await contentService.deleteManagedClass(classId);
+  };
+
+  const saveSubject = async (subjectData: ManagedSubject) => {
+    await contentService.saveManagedSubject(subjectData);
+  };
+  const deleteSubject = async (subjectId: string) => {
+    await contentService.deleteManagedSubject(subjectId);
+  };
+
+  const saveChapter = async (chapterData: ManagedChapter) => {
+    await contentService.saveManagedChapter(chapterData);
+  };
+  const deleteChapter = async (chapterId: string) => {
+    await contentService.deleteManagedChapter(chapterId);
+  };
+
+  const saveQuestion = async (questionData: ManagedQuestion) => {
+    await contentService.saveManagedQuestion(questionData);
+  };
+  const deleteQuestion = async (questionId: string) => {
+    await contentService.deleteManagedQuestion(questionId);
+  };
+
+  const saveNote = async (noteData: ManagedNote) => {
+    await contentService.saveManagedNote(noteData);
+  };
+  const deleteNote = async (noteId: string) => {
+    await contentService.deleteManagedNote(noteId);
+  };
+
+  const saveNotice = async (noticeData: ManagedNotice) => {
+    await contentService.saveManagedNotice(noticeData);
+  };
+  const deleteNotice = async (noticeId: string) => {
+    await contentService.deleteManagedNotice(noticeId);
+  };
+
+  const saveSeo = async (seoData: SiteSeoConfig) => {
+    await contentService.saveSiteSeo(seoData);
+  };
+
+  const saveDraft = async (draft: AdminDraftItem) => {
+    await contentService.saveAdminDraft(draft);
+  };
+  const deleteDraft = async (draftId: string) => {
+    await contentService.deleteAdminDraft(draftId);
+  };
+
+  const saveSyllabus = async (syllabusData: OfficialSyllabus) => {
+    await contentService.saveOfficialSyllabus(syllabusData);
+  };
+  const deleteSyllabus = async (syllabusId: string) => {
+    await contentService.deleteOfficialSyllabus(syllabusId);
+  };
+
+  const saveWritingGuide = async (item: WritingGuideItem) => {
+    await contentService.saveWritingGuide(item);
+  };
+  const deleteWritingGuide = async (id: string) => {
+    await contentService.deleteWritingGuide(id);
+  };
+
+  const realContentCounts = useMemo<PlatformContentCounts>(() => {
+    const publishedWriting = writingGuideList.filter((w) => w.status === 'published');
+    const totalProbondho = publishedWriting.filter((w) => w.category === 'probondho').length;
+    const totalRochona = publishedWriting.filter((w) => w.category === 'rochona').length;
+    const totalParagraph = publishedWriting.filter((w) => w.category === 'paragraph').length;
+    const totalBhabshomprosharon = publishedWriting.filter((w) => w.category === 'bhabshomprosharon').length;
+    const totalSarongsho = publishedWriting.filter((w) => w.category === 'sarongsho').length;
+    const totalSarmormo = publishedWriting.filter((w) => w.category === 'sarmormo').length;
+    const totalLetters = publishedWriting.filter((w) => w.category === 'letter' || w.category === 'personal_letter').length;
+    const totalPersonalLetters = publishedWriting.filter((w) => w.category === 'personal_letter').length;
+    const totalApplications = publishedWriting.filter((w) => w.category === 'application').length;
+    const totalReports = publishedWriting.filter((w) => w.category === 'report').length;
+    const totalDialogues = publishedWriting.filter((w) => w.category === 'dialogue' || w.category === 'english_dialogue').length;
+    const totalStories = publishedWriting.filter((w) => w.category === 'story' || w.category === 'completing_story').length;
+    const totalCompletingStories = publishedWriting.filter((w) => w.category === 'completing_story' || w.category === 'english_completing_story').length;
+    const totalEssayWriting = publishedWriting.filter((w) => w.category === 'essay_writing').length;
+    const totalExamWritingTopics = publishedWriting.filter((w) => w.category === 'exam_writing_topics').length;
+    const totalEnglishWriting = publishedWriting.filter((w) => w.category.startsWith('english_')).length;
+
+    const totalSyllabusLessons = syllabusList.reduce((acc, syl) => acc + syl.items.length, 0);
+    const totalQuestions = managedQuestions.length;
+    const totalMcqs =
+      managedQuestions.filter((q) => q.type === 'mcq').length +
+      quizzes.reduce((acc, q) => acc + q.questions.length, 0) +
+      syllabusList.reduce((acc, syl) => acc + syl.items.reduce((a, it) => a + (it.learningDetails?.mcqs?.length || 0), 0), 0);
+
+    return {
+      totalLessons: totalSyllabusLessons + lessons.length,
+      totalQuestions,
+      totalMcqs,
+      totalQuizzes: quizzes.length,
+      totalNotes: managedNotes.length,
+      totalProbondho,
+      totalRochona,
+      totalParagraph,
+      totalBhabshomprosharon,
+      totalSarongsho,
+      totalSarmormo,
+      totalLetters,
+      totalPersonalLetters,
+      totalApplications,
+      totalReports,
+      totalDialogues,
+      totalStories,
+      totalCompletingStories,
+      totalEssayWriting,
+      totalExamWritingTopics,
+      totalEnglishWriting,
+    };
+  }, [writingGuideList, syllabusList, managedQuestions, managedNotes, quizzes, lessons]);
+
+  const approveAndPublishDraft = async (draft: AdminDraftItem) => {
+    if (draft.type === 'mcq' && draft.parsedData) {
+      const q = draft.parsedData;
+      await contentService.saveManagedQuestion({
+        id: `q-ai-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        classId: draft.targetClass || 'class-8',
+        subjectId: draft.targetSubject || 'science',
+        question: q.question,
+        options: q.options || [],
+        correctAnswerIndex: q.correctAnswerIndex ?? 0,
+        explanation: q.explanation || '',
+        source: 'AI শিক্ষক (Gemini)',
+        type: 'mcq',
+        status: 'published',
+      });
+    } else if (draft.type === 'lesson' && draft.parsedData) {
+      const lesson = draft.parsedData;
+      await contentService.saveManagedNote({
+        id: `note-ai-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        classId: draft.targetClass || 'class-8',
+        subjectId: draft.targetSubject || 'science',
+        title: lesson.title || draft.topic,
+        explanation: lesson.explanation || draft.content,
+        keyPoints: lesson.keyPoints || [],
+        quickNotes: lesson.quickNotes || '',
+        status: 'published',
+      });
+    } else if (draft.type === 'notice') {
+      await contentService.saveManagedNotice({
+        id: `notice-ai-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        title: draft.topic,
+        text: draft.content,
+        type: 'info',
+        showOnBanner: true,
+        status: 'published',
+      });
+    }
+    await contentService.deleteAdminDraft(draft.id);
+  };
+
+  const isAdminFirebaseAuthenticated = Boolean(
+    currentUser?.role === 'admin' ||
+    (currentUser?.email && currentUser.email.toLowerCase() === 'shakib2006k@gmail.com') ||
+    isAdminSessionVerified
+  );
+
+  const isAdminAuthenticated = Boolean(
+    isAdminFirebaseAuthenticated && (isAdminCodeVerified || isAdminSessionVerified)
+  );
+
+  const verifyAdminAccessCodeAction = async (code: string): Promise<boolean> => {
+    const isValid = await verifyAdminAccessCode(code);
+    if (isValid) {
+      setIsAdminCodeVerified(true);
+      setIsAdminSessionVerified(true);
+      try {
+        sessionStorage.setItem(STORAGE_PREFIX + 'admin_code_verified', 'true');
+        sessionStorage.setItem(STORAGE_PREFIX + 'admin_verified', 'true');
+      } catch {}
+      if (currentUser && currentUser.role !== 'admin') {
+        setCurrentUser({ ...currentUser, role: 'admin' });
+      }
+      return true;
+    }
+    return false;
+  };
+
+  const updateAdminAccessCodeAction = async (newCode: string): Promise<boolean> => {
+    return await updateAdminAccessCode(newCode, currentUser?.email || 'shakib2006k@gmail.com');
+  };
+
+  const adminLoginWithPasscode = (passcode: string): boolean => {
+    // Deprecated insecure plain text keys removed. Code verified via verifyAdminAccessCodeAction
+    return false;
+  };
+
+  const adminLogout = async () => {
+    setIsAdminCodeVerified(false);
+    setIsAdminSessionVerified(false);
+    try {
+      sessionStorage.removeItem(STORAGE_PREFIX + 'admin_code_verified');
+      sessionStorage.removeItem(STORAGE_PREFIX + 'admin_verified');
+    } catch {}
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.warn('Firebase signOut note:', err);
+    }
+    setCurrentUser(INITIAL_USERS[0]);
+    navigate('login');
+  };
+
+  const bulkUpdateClassesRange = async (startGrade: number, endGrade: number) => {
+    const banglaNums: Record<number, string> = {
+      1: '১ম', 2: '২য়', 3: '৩য়', 4: '৪র্থ', 5: '৫ম',
+      6: '৬ষ্ঠ', 7: '৭ম', 8: '৮ম', 9: '৯ম', 10: '১০ম',
+      11: '১১দশ', 12: '১২দশ', 13: '১৩তম', 14: '১৪তম',
+    };
+    for (let g = startGrade; g <= endGrade; g++) {
+      const bName = banglaNums[g] ? `${banglaNums[g]} শ্রেণি` : `${g}ম শ্রেণি`;
+      await contentService.saveManagedClass({
+        id: `class-${g}`,
+        name: bName,
+        numericGrade: g,
+        description: `NCTB কারিকুলাম অনুযায়ী ${bName}-এর সিলেবাস ও বোর্ড প্রশ্নব্যাংক।`,
+        iconName: g >= 11 ? 'Award' : g >= 9 ? 'GraduationCap' : 'BookOpen',
+        status: 'published',
+        totalChapters: 12,
+        totalQuizzes: 20,
+      });
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -1415,6 +1975,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         },
         addLesson: adminAddLesson,
         addQuiz: adminCreateQuiz,
+
+        // Managed content states and actions
+        managedClasses,
+        managedSubjects,
+        managedChapters,
+        managedQuestions,
+        managedNotes,
+        managedNotices,
+        siteSeo,
+        adminDrafts,
+        saveClass,
+        deleteClass,
+        saveSubject,
+        deleteSubject,
+        saveChapter,
+        deleteChapter,
+        saveQuestion,
+        deleteQuestion,
+        saveNote,
+        deleteNote,
+        saveNotice,
+        deleteNotice,
+        saveSeo,
+        saveDraft,
+        deleteDraft,
+        approveAndPublishDraft,
+        syllabusList,
+        saveSyllabus,
+        deleteSyllabus,
+        writingGuideList,
+        saveWritingGuide,
+        deleteWritingGuide,
+        realContentCounts,
+
+        // Secure Admin Authentication & Control
+        isAdminFirebaseAuthenticated,
+        isAdminCodeVerified,
+        isAdminAuthenticated,
+        isAuthLoading,
+        verifyAdminAccessCodeAction,
+        updateAdminAccessCodeAction,
+        adminLoginWithPasscode,
+        adminLogout,
+        bulkUpdateClassesRange,
       }}
     >
       {children}

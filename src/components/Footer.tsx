@@ -154,6 +154,15 @@ export const Footer: React.FC = () => {
                 </button>
               </li>
               <li>
+                <button
+                  onClick={() => handleNav('admin')}
+                  className="hover:text-purple-600 font-semibold text-purple-700 dark:text-purple-400 transition flex items-center gap-1.5"
+                >
+                  <Shield className="w-3.5 h-3.5" />
+                  <span>অ্যাডমিন প্যানেল (Admin Panel)</span>
+                </button>
+              </li>
+              <li>
                 <a
                   id="footer-download-zip-btn"
                   href="/api/download-project"
